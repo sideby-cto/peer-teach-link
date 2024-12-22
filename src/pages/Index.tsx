@@ -1,6 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { ProfileCard } from "@/components/ProfileCard";
 import { PostCard } from "@/components/PostCard";
+import { Card } from "@/components/ui/card";
 
 const Index = () => {
   const sampleProfile = {
