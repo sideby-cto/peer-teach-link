@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { MessageSquare } from "lucide-react";
 
 interface ProfileCardProps {
   name: string;
@@ -73,6 +74,48 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
     }
   };
 
+  const handleConnect = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to connect with teachers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create a new conversation request
+      const { error } = await supabase
+        .from('conversations')
+        .insert([
+          { 
+            teacher1_id: user.id, 
+            teacher2_id: teacherId,
+            status: 'scheduled',
+            scheduled_at: null // Will be set when the other teacher accepts
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Connection requested",
+        description: `We'll notify you when ${name} accepts your 20-minute conversation request`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="w-full max-w-md animate-fadeIn">
       <CardHeader className="flex flex-row items-center gap-4">
@@ -94,14 +137,24 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
           <p className="text-sm">
             <span className="font-semibold">Experience:</span> {experience}
           </p>
-          <Button 
-            className="w-full mt-4"
-            variant={isFollowing ? "outline" : "default"}
-            onClick={handleFollow}
-            disabled={isLoading}
-          >
-            {isFollowing ? "Following" : "Follow"}
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <Button 
+              className="flex-1"
+              variant={isFollowing ? "outline" : "default"}
+              onClick={handleFollow}
+              disabled={isLoading}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </Button>
+            <Button 
+              className="flex-1"
+              variant="secondary"
+              onClick={handleConnect}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              20min Chat
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
