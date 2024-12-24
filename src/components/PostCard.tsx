@@ -1,6 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import { ThumbsUp, MessageSquare, Share2, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface PostCardProps {
   author: {
@@ -23,11 +24,15 @@ export const PostCard = ({ author, content, timestamp, likes, comments }: PostCa
           alt={author.name}
           className="w-12 h-12 rounded-full object-cover"
         />
-        <div>
+        <div className="flex-1">
           <h3 className="font-semibold">{author.name}</h3>
           <p className="text-sm text-gray-500">{author.title}</p>
           <p className="text-xs text-gray-400">{timestamp}</p>
         </div>
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          <span className="text-xs">Mike has approved this post</span>
+        </Badge>
       </CardHeader>
       <CardContent>
         <p className="text-gray-700">{content}</p>

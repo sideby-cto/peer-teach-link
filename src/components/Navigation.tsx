@@ -55,7 +55,7 @@ export const Navigation = () => {
     <nav className="bg-primary py-4 px-6 fixed w-full top-0 z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-white">TeachConnect</h1>
+          <h1 className="text-2xl font-bold text-white">sideby</h1>
         </div>
         <div className="flex items-center space-x-4">
           {loading ? (
