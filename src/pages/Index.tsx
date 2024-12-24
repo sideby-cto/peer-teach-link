@@ -2,6 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { ProfileCard } from "@/components/ProfileCard";
 import { PostCard } from "@/components/PostCard";
 import { Card } from "@/components/ui/card";
+import { CreatePostForm } from "@/components/CreatePostForm";
 
 const Index = () => {
   const sampleProfile = {
@@ -10,7 +11,7 @@ const Index = () => {
     school: "Lincoln High School",
     experience: "10+ years in education",
     imageUrl: "/placeholder.svg",
-    teacherId: "d290f1ee-6c54-4b01-90e6-d701748f0851" // Added teacherId
+    teacherId: "d290f1ee-6c54-4b01-90e6-d701748f0851"
   };
 
   const samplePost = {
@@ -37,6 +38,7 @@ const Index = () => {
           
           {/* Main Content */}
           <div className="md:col-span-6 space-y-6">
+            <CreatePostForm />
             <PostCard {...samplePost} />
           </div>
           
