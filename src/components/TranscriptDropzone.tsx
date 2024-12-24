@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 
 interface TranscriptDropzoneProps {
   onProfileSuggestion: (suggestion: ProfileSuggestion) => void;
+  onPostSuggestion?: (suggestion: { content: string }) => void;
+  isProcessing?: boolean;
 }
 
 interface ProfileSuggestion {
@@ -17,7 +18,11 @@ interface ProfileSuggestion {
   bio?: string;
 }
 
-export function TranscriptDropzone({ onProfileSuggestion }: TranscriptDropzoneProps) {
+export function TranscriptDropzone({ 
+  onProfileSuggestion, 
+  onPostSuggestion,
+  isProcessing: externalIsProcessing 
+}: TranscriptDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -39,7 +44,14 @@ export function TranscriptDropzone({ onProfileSuggestion }: TranscriptDropzonePr
 
       if (error) throw error;
 
-      return data.suggestion as ProfileSuggestion;
+      // Handle both profile and post suggestions
+      if (data.suggestion) {
+        onProfileSuggestion(data.suggestion as ProfileSuggestion);
+      }
+      
+      if (data.postSuggestion && onPostSuggestion) {
+        onPostSuggestion(data.postSuggestion);
+      }
     } catch (error) {
       console.error('Error processing transcript:', error);
       throw error;
@@ -56,13 +68,11 @@ export function TranscriptDropzone({ onProfileSuggestion }: TranscriptDropzonePr
       if (!file) return;
 
       const text = await file.text();
-      const suggestion = await processTranscript(text);
-      
-      onProfileSuggestion(suggestion);
+      await processTranscript(text);
       
       toast({
         title: "Transcript processed",
-        description: "We've analyzed your conversation and suggested profile updates.",
+        description: "We've analyzed your conversation and generated content.",
       });
     } catch (error) {
       toast({
@@ -84,7 +94,7 @@ export function TranscriptDropzone({ onProfileSuggestion }: TranscriptDropzonePr
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {isProcessing ? (
+      {isProcessing || externalIsProcessing ? (
         <div className="space-y-2">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" />
           <p className="text-sm text-gray-600">Processing transcript...</p>
@@ -95,7 +105,7 @@ export function TranscriptDropzone({ onProfileSuggestion }: TranscriptDropzonePr
             Drop your Upduo conversation transcript here
           </p>
           <p className="text-xs text-gray-500">
-            We'll analyze it and suggest profile updates
+            We'll analyze it and create a post to share your insights
           </p>
         </div>
       )}

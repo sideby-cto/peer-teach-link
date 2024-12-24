@@ -1,33 +1,30 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { TranscriptDropzone } from "./TranscriptDropzone";
 
 export function CreatePostForm() {
-  const [content, setContent] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-
-    setIsSubmitting(true);
+  const handlePostSuggestion = async (suggestion: { content: string }) => {
+    setIsProcessing(true);
     try {
       const { error } = await supabase
         .from("posts")
-        .insert([{ content, teacher_id: "placeholder-id" }]);
+        .insert([{ 
+          content: suggestion.content, 
+          teacher_id: "placeholder-id",
+          is_ai_generated: true 
+        }]);
 
       if (error) throw error;
 
       toast({
         title: "Post created",
-        description: "Your post has been shared with the community.",
+        description: "Your conversation has been analyzed and shared as a post.",
       });
-      
-      setContent("");
     } catch (error) {
       toast({
         title: "Error",
@@ -35,30 +32,23 @@ export function CreatePostForm() {
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsProcessing(false);
     }
   };
 
   return (
     <Card className="w-full max-w-2xl mb-6">
-      <form onSubmit={handleSubmit}>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Share your teaching experience</h3>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="What's on your mind? Share your teaching experiences, tips, or questions..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[120px]"
-          />
-        </CardContent>
-        <CardFooter className="flex justify-end">
-          <Button type="submit" disabled={isSubmitting || !content.trim()}>
-            {isSubmitting ? "Posting..." : "Post"}
-          </Button>
-        </CardFooter>
-      </form>
+      <CardHeader>
+        <h3 className="text-lg font-semibold">Share insights from your teaching conversations</h3>
+        <p className="text-sm text-gray-500">Drop your conversation transcript to generate a post</p>
+      </CardHeader>
+      <CardContent>
+        <TranscriptDropzone 
+          onProfileSuggestion={() => {}} 
+          onPostSuggestion={handlePostSuggestion}
+          isProcessing={isProcessing}
+        />
+      </CardContent>
     </Card>
   );
 }
