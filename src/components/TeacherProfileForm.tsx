@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { TranscriptDropzone } from "./TranscriptDropzone";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function TeacherProfileForm({
   onComplete,
@@ -23,6 +25,14 @@ export function TeacherProfileForm({
     subjects: "",
     bio: "",
   });
+  const [suggestion, setSuggestion] = useState<null | {
+    fullName?: string;
+    title?: string;
+    school?: string;
+    experienceYears?: string;
+    subjects?: string;
+    bio?: string;
+  }>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,8 +79,52 @@ export function TeacherProfileForm({
     }));
   };
 
+  const handleSuggestion = (newSuggestion: typeof suggestion) => {
+    setSuggestion(newSuggestion);
+  };
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    
+    setFormData(prev => ({
+      ...prev,
+      ...suggestion
+    }));
+    
+    setSuggestion(null);
+    
+    toast({
+      title: "Suggestions applied",
+      description: "Profile updated with transcript insights",
+    });
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <TranscriptDropzone onProfileSuggestion={handleSuggestion} />
+      
+      {suggestion && (
+        <Alert>
+          <AlertDescription className="space-y-2">
+            <p className="font-medium">We found some suggestions from your transcript:</p>
+            <ul className="text-sm space-y-1">
+              {Object.entries(suggestion).map(([key, value]) => (
+                <li key={key}>• {key}: {value}</li>
+              ))}
+            </ul>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={applySuggestion}
+              className="mt-2"
+            >
+              Apply Suggestions
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="fullName">Full Name</Label>
         <Input
