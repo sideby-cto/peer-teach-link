@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/peer-teach-link">
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/profile" element={<Profile />} />
