@@ -24,6 +24,22 @@ export const ConnectButton = ({ teacherId, teacherName }: ConnectButtonProps) =>
         return;
       }
 
+      // Check if the target teacher exists
+      const { data: targetTeacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('id', teacherId)
+        .maybeSingle();
+
+      if (!targetTeacher) {
+        toast({
+          title: "Error",
+          description: "This teacher hasn't completed their profile yet",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if the current user has a teacher profile
       const { data: currentTeacher } = await supabase
         .from('teachers')
@@ -40,6 +56,7 @@ export const ConnectButton = ({ teacherId, teacherName }: ConnectButtonProps) =>
         return;
       }
 
+      // Now we can safely create the conversation
       const { error } = await supabase
         .from('conversations')
         .insert([
