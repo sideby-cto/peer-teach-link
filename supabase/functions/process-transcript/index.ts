@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS
@@ -30,9 +31,12 @@ serve(async (req) => {
       )
     }
 
-    console.log('Processing transcript:', transcript.slice(0, 100) + '...')
+    console.log('Starting transcript processing...');
+    console.log('Transcript length:', transcript.length);
+    console.log('First 100 characters:', transcript.slice(0, 100));
 
     // Use Perplexity API to generate insights
+    console.log('Making request to Perplexity API...');
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -66,33 +70,38 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Perplexity API error:', errorText);
+      console.error('Perplexity API error response:', errorText);
+      console.error('Response status:', response.status);
+      console.error('Response status text:', response.statusText);
       throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
     }
 
-    const result = await response.json()
-    console.log('Perplexity API response received')
+    console.log('Received response from Perplexity API');
+    const result = await response.json();
+    console.log('Successfully parsed response JSON');
 
     if (!result.choices?.[0]?.message?.content) {
-      console.error('Invalid Perplexity API response:', result)
-      throw new Error('Invalid response from Perplexity API')
+      console.error('Invalid API response structure:', JSON.stringify(result, null, 2));
+      throw new Error('Invalid response from Perplexity API');
     }
 
-    const postContent = result.choices[0].message.content
+    const postContent = result.choices[0].message.content;
+    console.log('Generated post content length:', postContent.length);
+    console.log('First 100 characters of generated content:', postContent.slice(0, 100));
 
     // Create post suggestion with the generated content
     const postSuggestion = {
       content: postContent
-    }
+    };
 
     // Also create a profile suggestion based on the transcript content
-    // This is a simplified example - in production you'd want more sophisticated parsing
     const profileSuggestion = {
       title: "Teacher",
       bio: "Experienced educator passionate about student success.",
       subjects: "General Education",
-    }
+    };
 
+    console.log('Successfully prepared response');
     return new Response(
       JSON.stringify({
         postSuggestion,
@@ -102,15 +111,19 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
-    )
+    );
   } catch (error) {
-    console.error('Error processing transcript:', error)
+    console.error('Error processing transcript:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       }
-    )
+    );
   }
-})
+});
