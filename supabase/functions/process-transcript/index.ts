@@ -38,15 +38,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at analyzing conversations between teachers and extracting concise insights.
-            Your task is to create 2 short, tweet-style posts (max 280 characters each).
-            IMPORTANT: You must respond with ONLY a JSON array of strings, nothing else.
-            Example valid response: ["First insight about teaching", "Second insight about teaching"]
-            Do not include any explanations, headers, or other text.`
+            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each). IMPORTANT: Respond with ONLY a JSON array of strings. Example: ["Post 1", "Post 2"]. No markdown, no explanations.'
           },
           {
             role: 'user',
-            content: transcript
+            content: transcript.replace(/[\n\r\t]/g, ' ').trim()
           }
         ],
         temperature: 0.2,
@@ -75,15 +71,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at analyzing conversations between teachers and creating detailed articles.
-            Your task is to create 1 longer, article-style post (500-1000 words).
-            IMPORTANT: You must respond with ONLY a JSON array containing one string, nothing else.
-            Example valid response: ["Your detailed article text goes here"]
-            Do not include any explanations, headers, or other text.`
+            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words). IMPORTANT: Respond with ONLY a JSON array with one string. Example: ["Your article text"]. No markdown, no explanations.'
           },
           {
             role: 'user',
-            content: transcript
+            content: transcript.replace(/[\n\r\t]/g, ' ').trim()
           }
         ],
         temperature: 0.2,
@@ -103,36 +95,38 @@ serve(async (req) => {
     let shortPosts;
     let articles;
     try {
-      const shortPostsContent = shortPostsResult.choices[0].message.content.trim();
-      console.log('Attempting to parse short posts content:', shortPostsContent);
-      
-      // Try to clean the response if it's not pure JSON
-      const shortPostsJson = shortPostsContent.replace(/^```json\n|\n```$/g, '');
-      shortPosts = JSON.parse(shortPostsJson);
+      const sanitizeContent = (content: string) => {
+        // Remove any markdown code block syntax
+        let cleaned = content.replace(/```json\n?|```/g, '').trim();
+        // Remove any control characters and normalize whitespace
+        cleaned = cleaned.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+        return cleaned;
+      };
 
-      const articlesContent = articlesResult.choices[0].message.content.trim();
-      console.log('Attempting to parse articles content:', articlesContent);
-      
-      // Try to clean the response if it's not pure JSON
-      const articlesJson = articlesContent.replace(/^```json\n|\n```$/g, '');
-      articles = JSON.parse(articlesJson);
+      const shortPostsContent = sanitizeContent(shortPostsResult.choices[0].message.content);
+      console.log('Sanitized short posts content:', shortPostsContent);
+      shortPosts = JSON.parse(shortPostsContent);
 
-      // Validate the parsed data
+      const articlesContent = sanitizeContent(articlesResult.choices[0].message.content);
+      console.log('Sanitized articles content:', articlesContent);
+      articles = JSON.parse(articlesContent);
+
+      // Validate arrays
       if (!Array.isArray(shortPosts)) {
-        console.error('Short posts is not an array:', shortPosts);
-        throw new Error('Short posts response is not an array');
+        console.error('Invalid short posts format:', shortPosts);
+        throw new Error('Short posts must be an array');
       }
       if (!Array.isArray(articles)) {
-        console.error('Articles is not an array:', articles);
-        throw new Error('Articles response is not an array');
+        console.error('Invalid articles format:', articles);
+        throw new Error('Articles must be an array');
       }
 
-      // Validate content of arrays
+      // Validate content
       if (!shortPosts.every(post => typeof post === 'string')) {
-        throw new Error('Short posts array contains non-string elements');
+        throw new Error('All short posts must be strings');
       }
       if (!articles.every(article => typeof article === 'string')) {
-        throw new Error('Articles array contains non-string elements');
+        throw new Error('All articles must be strings');
       }
     } catch (error) {
       console.error('Error parsing AI responses:', error);
@@ -141,19 +135,19 @@ serve(async (req) => {
       throw new Error(`Failed to parse AI responses: ${error.message}`);
     }
 
-    // Create post suggestions with different types
+    // Create post suggestions
     const postSuggestions = [
       ...shortPosts.map((content: string) => ({
-        content,
+        content: content.trim(),
         post_type: 'short'
       })),
       ...articles.map((content: string) => ({
-        content,
+        content: content.trim(),
         post_type: 'article'
       }))
     ];
 
-    // Also create a profile suggestion based on the transcript content
+    // Create a profile suggestion
     const profileSuggestion = {
       title: "Teacher",
       bio: "Experienced educator passionate about student success.",
