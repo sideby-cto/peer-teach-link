@@ -16,9 +16,12 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Get the basename for GitHub Pages deployment
+  const basename = window.location.hostname === 'sideby-cto.github.io' ? '/peer-teach-link' : '/';
+
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
+      <Router basename={basename}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/profile" element={<Profile />} />
