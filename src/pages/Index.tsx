@@ -1,55 +1,84 @@
+import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
-import { ProfileCard } from "@/components/ProfileCard";
 import { PostCard } from "@/components/PostCard";
-import { Card } from "@/components/ui/card";
 import { CreatePostForm } from "@/components/CreatePostForm";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const sampleProfile = {
-    name: "Sarah Johnson",
-    title: "High School Mathematics Teacher",
-    school: "Lincoln High School",
-    experience: "10+ years in education",
-    imageUrl: "/placeholder.svg",
-    teacherId: "d290f1ee-6c54-4b01-90e6-d701748f0851"
-  };
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const samplePost = {
-    author: {
-      name: "Michael Chen",
-      title: "Science Department Head",
-      imageUrl: "/placeholder.svg",
-    },
-    content: "Just finished an amazing professional development session on integrating project-based learning in STEM subjects. Here are my key takeaways: 1) Start small and build up, 2) Connect projects to real-world problems, 3) Encourage student collaboration. What strategies have worked in your classrooms?",
-    timestamp: "2 hours ago",
-    likes: 45,
-    comments: 12,
-  };
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const { data: postsData, error } = await supabase
+          .from('posts')
+          .select(`
+            *,
+            teachers:teacher_id (
+              full_name,
+              title,
+              avatar_url
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        setPosts(postsData || []);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load posts",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [toast]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <main className="pt-20 px-4">
+          <div className="max-w-7xl mx-auto">
+            Loading...
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <main className="pt-20 px-4">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Left Sidebar */}
-          <div className="md:col-span-3">
-            <ProfileCard {...sampleProfile} />
-          </div>
+        <div className="max-w-7xl mx-auto space-y-6">
+          <CreatePostForm />
           
-          {/* Main Content */}
-          <div className="md:col-span-6 space-y-6">
-            <CreatePostForm />
-            <PostCard {...samplePost} />
-          </div>
-          
-          {/* Right Sidebar */}
-          <div className="md:col-span-3">
-            <Card className="p-4">
-              <h3 className="font-semibold mb-2">Suggested Connections</h3>
-              <div className="space-y-4">
-                {/* Add suggested connections here */}
-              </div>
-            </Card>
+          <div className="space-y-6">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                author={{
+                  name: post.teachers?.full_name || 'Unknown Teacher',
+                  title: post.teachers?.title || 'Teacher',
+                  imageUrl: post.teachers?.avatar_url || '/placeholder.svg'
+                }}
+                content={post.content}
+                timestamp={new Date(post.created_at).toLocaleDateString()}
+                likes={post.likes_count || 0}
+                comments={0}
+                isApproved={post.is_approved}
+              />
+            ))}
           </div>
         </div>
       </main>
