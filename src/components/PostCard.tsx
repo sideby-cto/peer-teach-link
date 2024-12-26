@@ -18,7 +18,7 @@ interface PostCardProps {
 
 export const PostCard = ({ author, content, timestamp, likes, comments, isApproved }: PostCardProps) => {
   return (
-    <Card className="w-full max-w-2xl animate-fadeIn">
+    <Card className="w-full max-w-2xl animate-fadeIn" data-testid="post-card">
       <CardHeader className="flex flex-row items-center gap-4">
         <img
           src={author.imageUrl}
