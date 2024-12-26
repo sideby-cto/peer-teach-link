@@ -73,6 +73,12 @@ serve(async (req) => {
       console.error('Perplexity API error response:', errorText);
       console.error('Response status:', response.status);
       console.error('Response status text:', response.statusText);
+      
+      // More specific error for auth issues
+      if (response.status === 401) {
+        throw new Error('Invalid Perplexity API key. Please check your API key configuration.');
+      }
+      
       throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
     }
 
