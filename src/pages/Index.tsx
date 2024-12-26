@@ -1,53 +1,11 @@
-import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { PostCard } from "@/components/PostCard";
 import { CreatePostForm } from "@/components/CreatePostForm";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
+import { usePosts } from "@/hooks/usePosts";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        console.log("Fetching posts...");
-        const { data: postsData, error } = await supabase
-          .from('posts')
-          .select(`
-            *,
-            teachers:teacher_id (
-              full_name,
-              title,
-              avatar_url
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching posts:', error);
-          throw error;
-        }
-
-        console.log("Fetched posts:", postsData);
-        setPosts(postsData || []);
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load posts. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, [toast]);
+  const { data: posts = [], isLoading, error } = usePosts();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white">
@@ -56,7 +14,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           <CreatePostForm />
           
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
