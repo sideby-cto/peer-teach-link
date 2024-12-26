@@ -5,9 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
+interface PostSuggestion {
+  content: string;
+  post_type: 'short' | 'article';
+}
+
 interface TranscriptDropzoneProps {
   onProfileSuggestion: (suggestion: ProfileSuggestion) => void;
-  onPostSuggestion?: (suggestion: { content: string }) => void;
+  onPostSuggestion?: (suggestions: PostSuggestion[]) => void;
   isProcessing?: boolean;
 }
 
@@ -81,8 +86,8 @@ export function TranscriptDropzone({
         onProfileSuggestion(data.suggestion as ProfileSuggestion);
       }
       
-      if (data.postSuggestion && onPostSuggestion) {
-        onPostSuggestion(data.postSuggestion);
+      if (data.postSuggestions && onPostSuggestion) {
+        onPostSuggestion(data.postSuggestions);
       }
     } catch (error) {
       console.error('Error processing transcript:', error);
