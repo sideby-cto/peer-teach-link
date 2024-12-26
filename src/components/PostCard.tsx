@@ -13,9 +13,10 @@ interface PostCardProps {
   timestamp: string;
   likes: number;
   comments: number;
+  isApproved: boolean;
 }
 
-export const PostCard = ({ author, content, timestamp, likes, comments }: PostCardProps) => {
+export const PostCard = ({ author, content, timestamp, likes, comments, isApproved }: PostCardProps) => {
   return (
     <Card className="w-full max-w-2xl animate-fadeIn">
       <CardHeader className="flex flex-row items-center gap-4">
@@ -29,10 +30,12 @@ export const PostCard = ({ author, content, timestamp, likes, comments }: PostCa
           <p className="text-sm text-gray-500">{author.title}</p>
           <p className="text-xs text-gray-400">{timestamp}</p>
         </div>
-        <Badge variant="secondary" className="flex items-center gap-1">
-          <CheckCircle className="h-3 w-3" />
-          <span className="text-xs">Mike has approved this post</span>
-        </Badge>
+        {isApproved && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            <span className="text-xs">Mike has approved this post</span>
+          </Badge>
+        )}
       </CardHeader>
       <CardContent>
         <p className="text-gray-700">{content}</p>

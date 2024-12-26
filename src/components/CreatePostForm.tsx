@@ -44,14 +44,15 @@ export function CreatePostForm() {
         .insert([{ 
           content: pendingPost.content, 
           teacher_id: user.id,
-          is_ai_generated: true 
+          is_ai_generated: true,
+          is_approved: false // Posts start as unapproved
         }]);
 
       if (error) throw error;
 
       toast({
         title: "Post created",
-        description: "Your conversation has been analyzed and shared as a post.",
+        description: "Your conversation has been analyzed and shared as a post. It will be visible once approved.",
       });
     } catch (error) {
       console.error('Error creating post:', error);
