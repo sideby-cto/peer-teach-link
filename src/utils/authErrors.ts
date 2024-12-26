@@ -12,9 +12,10 @@ export const handleAuthError = (error: Error, toast: ReturnType<typeof useToast>
   
   if (error.message.includes("Email not confirmed")) {
     toast({
-      title: "Email not confirmed",
-      description: "Please check your email and click the confirmation link before signing in.",
+      title: "Email confirmation required",
+      description: "Please check your email and click the confirmation link. After confirming, you can sign in.",
       variant: "destructive",
+      duration: 6000,
     });
     return true;
   }

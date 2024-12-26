@@ -2,9 +2,9 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { handleAuthError } from "@/utils/authErrors";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { useAuthSession } from "./useAuthSession";
 
-export const useAuthOperations = (onSuccess: (userId: string) => void) => {
+export function useAuthOperations(onSuccess: (userId: string) => void) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { waitForSession } = useAuthSession();
@@ -16,20 +16,22 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
         email,
         password,
       });
-      
+
       if (error) {
-        if (handleAuthError(error, toast)) return;
-        throw error;
+        if (!handleAuthError(error, toast)) {
+          throw error;
+        }
       }
       
       toast({
-        title: "Account created",
-        description: "Please check your email for a confirmation link before signing in.",
+        title: "Account created - Confirmation required",
+        description: "Please check your email and click the confirmation link before signing in. This may take a few minutes.",
+        duration: 6000,
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -44,10 +46,11 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
         email,
         password,
       });
-      
+
       if (error) {
-        if (handleAuthError(error, toast)) return;
-        throw error;
+        if (!handleAuthError(error, toast)) {
+          throw error;
+        }
       }
       
       const session = await waitForSession();
@@ -59,7 +62,7 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -72,4 +75,4 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
     signIn,
     isLoading,
   };
-};
+}
