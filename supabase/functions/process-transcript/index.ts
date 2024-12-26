@@ -39,12 +39,12 @@ serve(async (req) => {
           {
             role: 'system',
             content: `You are an expert at analyzing conversations between teachers and extracting concise, impactful insights.
-            Create 3 short, tweet-style posts (max 280 characters each) highlighting key teaching strategies or insights.
-            Format the response as a JSON array of strings, each representing one post.`
+            Create 2 short, tweet-style posts (max 280 characters each) highlighting key teaching strategies or insights.
+            Return ONLY a valid JSON array of strings, each representing one post. For example: ["First post text", "Second post text"]`
           },
           {
             role: 'user',
-            content: `Generate 3 short posts from this conversation transcript:\n\n${transcript}`
+            content: `Generate 2 short posts from this conversation transcript:\n\n${transcript}`
           }
         ],
         temperature: 0.2,
@@ -58,7 +58,7 @@ serve(async (req) => {
     }
 
     const shortPostsResult = await shortPostsResponse.json();
-    console.log('Short posts generated:', shortPostsResult);
+    console.log('Short posts API response:', shortPostsResult);
 
     // Then, generate one article-style post
     console.log('Generating article...');
@@ -75,7 +75,7 @@ serve(async (req) => {
             role: 'system',
             content: `You are an expert at analyzing conversations between teachers and creating detailed articles.
             Create 1 longer, article-style post (500-1000 words) that dives deep into teaching strategies discussed.
-            Format the response as a JSON array containing one string representing the article.`
+            Return ONLY a valid JSON array containing one string representing the article. For example: ["Article text here"]`
           },
           {
             role: 'user',
@@ -93,19 +93,29 @@ serve(async (req) => {
     }
 
     const articlesResult = await articlesResponse.json();
-    console.log('Article generated:', articlesResult);
+    console.log('Article API response:', articlesResult);
 
-    // Parse the responses
+    // Parse the responses with better error handling
     let shortPosts;
     let articles;
     try {
-      shortPosts = JSON.parse(shortPostsResult.choices[0].message.content);
-      articles = JSON.parse(articlesResult.choices[0].message.content);
+      const shortPostsContent = shortPostsResult.choices[0].message.content;
+      console.log('Attempting to parse short posts content:', shortPostsContent);
+      shortPosts = JSON.parse(shortPostsContent);
+      
+      const articlesContent = articlesResult.choices[0].message.content;
+      console.log('Attempting to parse articles content:', articlesContent);
+      articles = JSON.parse(articlesContent);
+
+      // Validate the parsed data
+      if (!Array.isArray(shortPosts) || !Array.isArray(articles)) {
+        throw new Error('API returned non-array response');
+      }
     } catch (error) {
       console.error('Error parsing AI responses:', error);
       console.log('Short posts raw content:', shortPostsResult.choices[0].message.content);
       console.log('Articles raw content:', articlesResult.choices[0].message.content);
-      throw new Error('Failed to parse AI responses');
+      throw new Error(`Failed to parse AI responses: ${error.message}`);
     }
 
     // Create post suggestions with different types
@@ -128,7 +138,7 @@ serve(async (req) => {
       stance: "Dedicated to fostering a growth mindset and creating an inclusive learning environment where every student can thrive."
     };
 
-    console.log('Returning response with suggestions');
+    console.log('Successfully processed transcript, returning response');
     return new Response(
       JSON.stringify({
         postSuggestions,
