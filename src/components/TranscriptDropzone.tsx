@@ -38,13 +38,18 @@ export function TranscriptDropzone({
 
   const processTranscript = async (text: string) => {
     try {
+      console.log('Sending transcript to process-transcript function')
       const { data, error } = await supabase.functions.invoke('process-transcript', {
         body: { transcript: text }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from process-transcript function:', error);
+        throw error;
+      }
 
-      // Handle both profile and post suggestions
+      console.log('Received response from process-transcript:', data);
+
       if (data.suggestion) {
         onProfileSuggestion(data.suggestion as ProfileSuggestion);
       }
@@ -65,9 +70,34 @@ export function TranscriptDropzone({
 
     try {
       const file = e.dataTransfer.files[0];
-      if (!file) return;
+      if (!file) {
+        toast({
+          title: "No file detected",
+          description: "Please try dropping the file again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (file.type !== 'text/plain') {
+        toast({
+          title: "Invalid file type",
+          description: "Please drop a text (.txt) file containing your conversation transcript.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const text = await file.text();
+      if (!text.trim()) {
+        toast({
+          title: "Empty file",
+          description: "The transcript file appears to be empty.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await processTranscript(text);
       
       toast({
@@ -75,6 +105,7 @@ export function TranscriptDropzone({
         description: "We've analyzed your conversation and generated content.",
       });
     } catch (error) {
+      console.error('Error in handleDrop:', error);
       toast({
         title: "Error processing transcript",
         description: "Failed to process the transcript. Please try again.",
