@@ -38,13 +38,15 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at analyzing conversations between teachers and extracting concise, impactful insights.
-            Create 2 short, tweet-style posts (max 280 characters each) highlighting key teaching strategies or insights.
-            Return ONLY a valid JSON array of strings, each representing one post. For example: ["First post text", "Second post text"]`
+            content: `You are an expert at analyzing conversations between teachers and extracting concise insights.
+            Your task is to create 2 short, tweet-style posts (max 280 characters each).
+            IMPORTANT: You must respond with ONLY a JSON array of strings, nothing else.
+            Example valid response: ["First insight about teaching", "Second insight about teaching"]
+            Do not include any explanations, headers, or other text.`
           },
           {
             role: 'user',
-            content: `Generate 2 short posts from this conversation transcript:\n\n${transcript}`
+            content: transcript
           }
         ],
         temperature: 0.2,
@@ -58,7 +60,7 @@ serve(async (req) => {
     }
 
     const shortPostsResult = await shortPostsResponse.json();
-    console.log('Short posts API response:', shortPostsResult);
+    console.log('Short posts API raw response:', shortPostsResult);
 
     // Then, generate one article-style post
     console.log('Generating article...');
@@ -74,12 +76,14 @@ serve(async (req) => {
           {
             role: 'system',
             content: `You are an expert at analyzing conversations between teachers and creating detailed articles.
-            Create 1 longer, article-style post (500-1000 words) that dives deep into teaching strategies discussed.
-            Return ONLY a valid JSON array containing one string representing the article. For example: ["Article text here"]`
+            Your task is to create 1 longer, article-style post (500-1000 words).
+            IMPORTANT: You must respond with ONLY a JSON array containing one string, nothing else.
+            Example valid response: ["Your detailed article text goes here"]
+            Do not include any explanations, headers, or other text.`
           },
           {
             role: 'user',
-            content: `Generate 1 detailed article from this conversation transcript:\n\n${transcript}`
+            content: transcript
           }
         ],
         temperature: 0.2,
@@ -93,23 +97,42 @@ serve(async (req) => {
     }
 
     const articlesResult = await articlesResponse.json();
-    console.log('Article API response:', articlesResult);
+    console.log('Article API raw response:', articlesResult);
 
-    // Parse the responses with better error handling
+    // Parse and validate the responses
     let shortPosts;
     let articles;
     try {
-      const shortPostsContent = shortPostsResult.choices[0].message.content;
+      const shortPostsContent = shortPostsResult.choices[0].message.content.trim();
       console.log('Attempting to parse short posts content:', shortPostsContent);
-      shortPosts = JSON.parse(shortPostsContent);
       
-      const articlesContent = articlesResult.choices[0].message.content;
+      // Try to clean the response if it's not pure JSON
+      const shortPostsJson = shortPostsContent.replace(/^```json\n|\n```$/g, '');
+      shortPosts = JSON.parse(shortPostsJson);
+
+      const articlesContent = articlesResult.choices[0].message.content.trim();
       console.log('Attempting to parse articles content:', articlesContent);
-      articles = JSON.parse(articlesContent);
+      
+      // Try to clean the response if it's not pure JSON
+      const articlesJson = articlesContent.replace(/^```json\n|\n```$/g, '');
+      articles = JSON.parse(articlesJson);
 
       // Validate the parsed data
-      if (!Array.isArray(shortPosts) || !Array.isArray(articles)) {
-        throw new Error('API returned non-array response');
+      if (!Array.isArray(shortPosts)) {
+        console.error('Short posts is not an array:', shortPosts);
+        throw new Error('Short posts response is not an array');
+      }
+      if (!Array.isArray(articles)) {
+        console.error('Articles is not an array:', articles);
+        throw new Error('Articles response is not an array');
+      }
+
+      // Validate content of arrays
+      if (!shortPosts.every(post => typeof post === 'string')) {
+        throw new Error('Short posts array contains non-string elements');
+      }
+      if (!articles.every(article => typeof article === 'string')) {
+        throw new Error('Articles array contains non-string elements');
       }
     } catch (error) {
       console.error('Error parsing AI responses:', error);
