@@ -28,6 +28,22 @@ export const FollowButton = ({ teacherId, teacherName, isInitiallyFollowing }: F
         return;
       }
 
+      // First, verify that the teacher exists in the teachers table
+      const { data: teacherProfile } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('id', teacherId)
+        .maybeSingle();
+
+      if (!teacherProfile) {
+        toast({
+          title: "Error",
+          description: "This teacher hasn't completed their profile yet",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if the current user has a teacher profile
       const { data: currentTeacher } = await supabase
         .from('teachers')
