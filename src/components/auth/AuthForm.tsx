@@ -7,12 +7,11 @@ import { getAuthErrorMessage } from "@/utils/authErrors";
 import { Button } from "@/components/ui/button";
 
 interface AuthFormProps {
-  mode: "signin" | "signup";
-  onSuccess?: () => void;
-  onToggleMode?: () => void;
+  onSuccess: (userId: string) => Promise<void>;
 }
 
-export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
+export function AuthForm({ onSuccess }: AuthFormProps) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -38,20 +37,11 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       }
 
       if (result.error) {
-        // Check for session establishment error
-        if (result.error.message.includes("establish session")) {
-          toast({
-            title: "Session Error",
-            description: "Please try signing in again. If the problem persists, check if you've confirmed your email address.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Authentication Error",
-            description: getAuthErrorMessage(result.error.message),
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Authentication Error",
+          description: getAuthErrorMessage(result.error.message),
+          variant: "destructive",
+        });
         return;
       }
 
@@ -60,13 +50,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           title: "Account created",
           description: "Please check your email to confirm your account before signing in.",
         });
-        onToggleMode?.();
+        setMode("signin");
       } else if (mode === "signin" && result.data?.user) {
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully signed in.",
-        });
-        onSuccess?.();
+        await onSuccess(result.data.user.id);
         navigate("/");
       }
     } catch (error) {
@@ -79,6 +65,10 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
   };
 
   return (
@@ -104,7 +94,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         <Button
           variant="link"
           className="text-sm text-muted-foreground"
-          onClick={onToggleMode}
+          onClick={toggleMode}
         >
           {mode === "signin"
             ? "Don't have an account? Sign up"
