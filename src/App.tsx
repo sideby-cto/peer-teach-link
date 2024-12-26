@@ -5,8 +5,14 @@ import ApprovedPosts from "./pages/ApprovedPosts";
 import { Toaster } from "@/components/ui/toaster";
 
 function App() {
+  // Set basename conditionally based on the environment
+  const basename = window.location.hostname === "localhost" || 
+                  window.location.hostname.includes("lovable.dev") 
+                  ? "/" 
+                  : "/peer-teach-link";
+
   return (
-    <Router basename="/peer-teach-link">
+    <Router basename={basename}>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/profile" element={<Profile />} />
