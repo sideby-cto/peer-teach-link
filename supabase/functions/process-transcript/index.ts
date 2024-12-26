@@ -21,13 +21,22 @@ serve(async (req) => {
       )
     }
 
+    const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
+    if (!apiKey) {
+      console.error('Perplexity API key not found')
+      return new Response(
+        JSON.stringify({ error: 'API key configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
     console.log('Processing transcript:', transcript.slice(0, 100) + '...')
 
     // Use Perplexity API to generate insights
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('PERPLEXITY_API_KEY')}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -55,10 +64,17 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Perplexity API error:', errorText);
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+    }
+
     const result = await response.json()
-    console.log('Perplexity API response:', result)
+    console.log('Perplexity API response received')
 
     if (!result.choices?.[0]?.message?.content) {
+      console.error('Invalid Perplexity API response:', result)
       throw new Error('Invalid response from Perplexity API')
     }
 
