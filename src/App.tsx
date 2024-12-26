@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import ApprovedPosts from "./pages/ApprovedPosts";
@@ -16,19 +16,14 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Get the basename for GitHub Pages deployment
-  const basename = window.location.hostname === 'sideby-cto.github.io' ? '/peer-teach-link' : '/';
-
   return (
     <QueryClientProvider client={queryClient}>
-      <Router basename={basename}>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/approved-posts" element={<ApprovedPosts />} />
-        </Routes>
-        <Toaster />
-      </Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/approved-posts" element={<ApprovedPosts />} />
+      </Routes>
+      <Toaster />
     </QueryClientProvider>
   );
 }
