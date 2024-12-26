@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,10 +21,52 @@ serve(async (req) => {
       )
     }
 
-    // For now, we'll create a simple post suggestion from the transcript
-    // In a real implementation, you might want to use an AI service to analyze the transcript
+    console.log('Processing transcript:', transcript.slice(0, 100) + '...')
+
+    // Use Perplexity API to generate insights
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('PERPLEXITY_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert at analyzing conversations between teachers and extracting the most valuable insights.
+            Focus on:
+            - Teaching strategies discussed
+            - Solutions to common challenges
+            - Innovative approaches shared
+            - Key learnings and takeaways
+            
+            Format the response as a concise, well-structured post that would be valuable for other teachers to read.
+            Keep it under 2000 characters. Use clear paragraphs and bullet points where appropriate.`
+          },
+          {
+            role: 'user',
+            content: `Please analyze this conversation transcript and extract the most valuable insights to share with other teachers:\n\n${transcript}`
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 1000,
+      }),
+    });
+
+    const result = await response.json()
+    console.log('Perplexity API response:', result)
+
+    if (!result.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response from Perplexity API')
+    }
+
+    const postContent = result.choices[0].message.content
+
+    // Create post suggestion with the generated content
     const postSuggestion = {
-      content: `Key insights from my teaching conversation:\n\n${transcript.slice(0, 200)}...`
+      content: postContent
     }
 
     // Also create a profile suggestion based on the transcript content
@@ -47,6 +88,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Error processing transcript:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
