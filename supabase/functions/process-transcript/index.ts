@@ -7,30 +7,26 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { transcript } = await req.json()
+    const { transcript } = await req.json();
+    console.log('Received transcript:', transcript);
 
     if (!transcript) {
-      return new Response(
-        JSON.stringify({ error: 'No transcript provided' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+      throw new Error('No transcript provided');
     }
 
-    const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
+    const apiKey = Deno.env.get('PERPLEXITY_API_KEY');
     if (!apiKey) {
-      console.error('Perplexity API key not found')
-      return new Response(
-        JSON.stringify({ error: 'Perplexity API key not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
+      throw new Error('Perplexity API key not found');
     }
 
     // First, generate short posts
+    console.log('Generating short posts...');
     const shortPostsResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -43,19 +39,29 @@ serve(async (req) => {
           {
             role: 'system',
             content: `You are an expert at analyzing conversations between teachers and extracting concise, impactful insights.
-            Create 5 short, tweet-style posts (max 280 characters each) highlighting key teaching strategies or insights.
+            Create 3 short, tweet-style posts (max 280 characters each) highlighting key teaching strategies or insights.
             Format the response as a JSON array of strings, each representing one post.`
           },
           {
             role: 'user',
-            content: `Generate 5 short posts from this conversation transcript:\n\n${transcript}`
+            content: `Generate 3 short posts from this conversation transcript:\n\n${transcript}`
           }
         ],
         temperature: 0.2,
       }),
     });
 
-    // Then, generate article-style posts
+    if (!shortPostsResponse.ok) {
+      const errorText = await shortPostsResponse.text();
+      console.error('Short posts API error:', errorText);
+      throw new Error(`Failed to generate short posts: ${errorText}`);
+    }
+
+    const shortPostsResult = await shortPostsResponse.json();
+    console.log('Short posts generated:', shortPostsResult);
+
+    // Then, generate one article-style post
+    console.log('Generating article...');
     const articlesResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -68,23 +74,39 @@ serve(async (req) => {
           {
             role: 'system',
             content: `You are an expert at analyzing conversations between teachers and creating detailed articles.
-            Create 2 longer, article-style posts (500-1000 words each) that dive deep into teaching strategies discussed.
-            Format the response as a JSON array of strings, each representing one article.`
+            Create 1 longer, article-style post (500-1000 words) that dives deep into teaching strategies discussed.
+            Format the response as a JSON array containing one string representing the article.`
           },
           {
             role: 'user',
-            content: `Generate 2 detailed articles from this conversation transcript:\n\n${transcript}`
+            content: `Generate 1 detailed article from this conversation transcript:\n\n${transcript}`
           }
         ],
         temperature: 0.2,
       }),
     });
 
-    const shortPostsResult = await shortPostsResponse.json();
-    const articlesResult = await articlesResponse.json();
+    if (!articlesResponse.ok) {
+      const errorText = await articlesResponse.text();
+      console.error('Articles API error:', errorText);
+      throw new Error(`Failed to generate articles: ${errorText}`);
+    }
 
-    const shortPosts = JSON.parse(shortPostsResult.choices[0].message.content);
-    const articles = JSON.parse(articlesResult.choices[0].message.content);
+    const articlesResult = await articlesResponse.json();
+    console.log('Article generated:', articlesResult);
+
+    // Parse the responses
+    let shortPosts;
+    let articles;
+    try {
+      shortPosts = JSON.parse(shortPostsResult.choices[0].message.content);
+      articles = JSON.parse(articlesResult.choices[0].message.content);
+    } catch (error) {
+      console.error('Error parsing AI responses:', error);
+      console.log('Short posts raw content:', shortPostsResult.choices[0].message.content);
+      console.log('Articles raw content:', articlesResult.choices[0].message.content);
+      throw new Error('Failed to parse AI responses');
+    }
 
     // Create post suggestions with different types
     const postSuggestions = [
@@ -106,6 +128,7 @@ serve(async (req) => {
       stance: "Dedicated to fostering a growth mindset and creating an inclusive learning environment where every student can thrive."
     };
 
+    console.log('Returning response with suggestions');
     return new Response(
       JSON.stringify({
         postSuggestions,
@@ -119,8 +142,14 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error processing transcript:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to process transcript' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: error.message || 'Failed to process transcript',
+        details: error.stack
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
     );
   }
 });
