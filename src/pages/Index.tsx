@@ -45,11 +45,13 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white">
         <Navigation />
         <main className="pt-20 px-4">
           <div className="max-w-7xl mx-auto">
-            Loading...
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-pulse text-primary">Loading...</div>
+            </div>
           </div>
         </main>
       </div>
@@ -57,7 +59,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white">
       <Navigation />
       <main className="pt-20 px-4">
         <div className="max-w-7xl mx-auto space-y-6">

@@ -55,10 +55,10 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="bg-primary py-4 px-6 fixed w-full top-0 z-50">
+    <nav className="bg-primary py-4 px-6 fixed w-full top-0 z-50 shadow-lg">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-8">
-          <Link to="/" className="text-2xl font-bold text-white">
+          <Link to="/" className="text-2xl font-bold text-white hover:text-opacity-90 transition-colors">
             sideby
           </Link>
 
@@ -66,23 +66,23 @@ export const Navigation = () => {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-white bg-transparent hover:bg-primary/80">
+                  <NavigationMenuTrigger className="text-white bg-secondary/20 hover:bg-secondary/30 data-[state=open]:bg-secondary/30">
                     Menu
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-4">
+                    <ul className="grid w-[400px] gap-3 p-4 bg-white">
                       {navigationItems.map((item) => (
                         <li key={item.href}>
                           <Link
                             to={item.href}
                             className={cn(
                               "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors",
-                              "hover:bg-accent hover:text-accent-foreground",
-                              location.pathname === item.href && "bg-accent"
+                              "hover:bg-primary/10",
+                              location.pathname === item.href && "bg-primary/10"
                             )}
                           >
-                            <div className="text-sm font-medium leading-none">{item.title}</div>
-                            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                            <div className="text-sm font-medium leading-none text-neutral-800">{item.title}</div>
+                            <p className="line-clamp-2 text-sm leading-snug text-neutral-600">
                               {item.description}
                             </p>
                           </Link>
