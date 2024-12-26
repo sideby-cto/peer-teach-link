@@ -4,6 +4,13 @@ import { ProfileCard } from "@/components/ProfileCard";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+} from "@/components/ui/breadcrumb";
+import { HomeIcon } from "lucide-react";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
@@ -75,6 +82,20 @@ const Profile = () => {
       <Navigation />
       <main className="pt-20 px-4">
         <div className="max-w-7xl mx-auto">
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/" className="flex items-center gap-2">
+                  <HomeIcon className="h-4 w-4" />
+                  Timeline
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbItem>
+                <BreadcrumbLink>Profile</BreadcrumbLink>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          
           <h1 className="text-2xl font-bold mb-6">My Profile</h1>
           <ProfileCard
             name={profile.full_name}
