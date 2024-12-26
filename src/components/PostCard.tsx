@@ -29,28 +29,32 @@ export const PostCard = ({ author, content, timestamp, likes, comments, isApprov
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">{author.name}</h3>
-              <p className="text-sm text-gray-600">{author.title}</p>
+              <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                {author.name}
+              </h3>
+              <p className="text-sm font-medium text-gray-600">{author.title}</p>
             </div>
             {isApproved && (
               <Badge variant="secondary" className="flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100">
                 <CheckCircle className="h-3 w-3" />
-                <span className="text-xs">Approved</span>
+                <span className="text-xs font-medium">Approved</span>
               </Badge>
             )}
           </div>
-          <p className="text-xs text-gray-400">{timestamp}</p>
+          <p className="text-xs text-gray-500">{timestamp}</p>
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-gray-700 whitespace-pre-wrap">{content}</p>
+        <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
+          {content}
+        </p>
       </CardContent>
       <CardFooter className="border-t pt-4 flex justify-between">
         <Button 
           variant="ghost" 
           className={cn(
             "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200"
+            "transition-colors duration-200 font-medium"
           )}
         >
           <ThumbsUp className="h-4 w-4" />
@@ -60,7 +64,7 @@ export const PostCard = ({ author, content, timestamp, likes, comments, isApprov
           variant="ghost" 
           className={cn(
             "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200"
+            "transition-colors duration-200 font-medium"
           )}
         >
           <MessageSquare className="h-4 w-4" />
@@ -70,7 +74,7 @@ export const PostCard = ({ author, content, timestamp, likes, comments, isApprov
           variant="ghost" 
           className={cn(
             "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200"
+            "transition-colors duration-200 font-medium"
           )}
         >
           <Share2 className="h-4 w-4" />
