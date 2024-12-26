@@ -36,11 +36,30 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
     setIsLoading(true);
 
     try {
-      // Get the user's email from auth
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) throw new Error("User email not found");
+      // First check if we have a valid session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error("Authentication error: " + sessionError.message);
+      }
+      
+      if (!sessionData.session) {
+        throw new Error("No active session found. Please sign in again.");
+      }
 
-      const { error } = await supabase.from("teachers").insert([
+      // Get the user's email from auth
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw new Error("Failed to get user details: " + userError.message);
+      }
+      
+      if (!user?.email) {
+        throw new Error("User email not found in session");
+      }
+
+      // Create the teacher profile
+      const { error: insertError } = await supabase.from("teachers").insert([
         {
           id: userId, // Use the provided userId which matches auth.uid()
           email: user.email,
@@ -53,7 +72,9 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
         },
       ]);
 
-      if (error) throw error;
+      if (insertError) {
+        throw new Error("Failed to create profile: " + insertError.message);
+      }
 
       toast({
         title: "Profile created",
@@ -65,7 +86,7 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
       console.error("Profile creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to create profile. Please try again.",
+        description: error.message || "Failed to create profile. Please try again.",
         variant: "destructive",
       });
     } finally {
