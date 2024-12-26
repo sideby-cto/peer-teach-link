@@ -41,7 +41,20 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          // Check if this is an email confirmation error
+          if (error.message.includes("Email not confirmed")) {
+            toast({
+              title: "Email not confirmed",
+              description: "Please check your email and click the confirmation link before signing in.",
+              variant: "destructive",
+            });
+            return;
+          }
+          throw error;
+        }
+        
         toast({
           title: "Welcome back!",
           description: "You've successfully signed in",
@@ -95,6 +108,11 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
           ? "Already have an account? Sign in"
           : "Need an account? Sign up"}
       </Button>
+      {isSignUp && (
+        <p className="text-sm text-muted-foreground mt-2">
+          After signing up, you'll need to confirm your email address before signing in.
+        </p>
+      )}
     </form>
   );
 }
