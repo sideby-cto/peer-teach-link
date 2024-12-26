@@ -7,9 +7,9 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
-// Get the base URL from the current hostname
+// Get the base URL from the current hostname and environment
 const getBaseUrl = () => {
-  if (window.location.hostname === "sideby-cto.github.io") {
+  if (import.meta.env.MODE === 'production' && window.location.hostname === "sideby-cto.github.io") {
     return "/peer-teach-link";
   }
   return "";
