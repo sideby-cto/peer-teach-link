@@ -1,16 +1,25 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface AuthFormFieldsProps {
-  email: string;
-  setEmail: (email: string) => void;
-  password: string;
-  setPassword: (password: string) => void;
+  mode: "signin" | "signup";
+  isLoading: boolean;
+  onSubmit: (email: string, password: string) => Promise<void>;
 }
 
-export const AuthFormFields = ({ email, setEmail, password, setPassword }: AuthFormFieldsProps) => {
+export const AuthFormFields = ({ mode, isLoading, onSubmit }: AuthFormFieldsProps) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(email, password);
+  };
+
   return (
-    <>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -31,6 +40,9 @@ export const AuthFormFields = ({ email, setEmail, password, setPassword }: AuthF
           required
         />
       </div>
-    </>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
+      </Button>
+    </form>
   );
 };

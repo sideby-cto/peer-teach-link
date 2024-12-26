@@ -1,6 +1,17 @@
-import { useToast } from "@/hooks/use-toast";
+export const getAuthErrorMessage = (error: string): string => {
+  if (error.includes("Invalid login credentials")) {
+    return "Invalid email or password. Please try again.";
+  }
+  if (error.includes("Email not confirmed")) {
+    return "Please check your email and confirm your account before signing in.";
+  }
+  if (error.includes("rate limit")) {
+    return "Too many attempts. Please wait a moment before trying again.";
+  }
+  return "An unexpected error occurred. Please try again.";
+};
 
-export const handleAuthError = (error: Error, toast: ReturnType<typeof useToast>["toast"]) => {
+export const handleAuthError = (error: Error, toast: any) => {
   if (error.message.includes("rate_limit")) {
     toast({
       title: "Please wait",

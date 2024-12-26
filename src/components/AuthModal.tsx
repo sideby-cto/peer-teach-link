@@ -56,14 +56,12 @@ export function AuthModal({
     if (newUserId) {
       const hasProfile = await checkExistingProfile(newUserId);
       if (hasProfile) {
-        // User already has a profile, just close the modal
         onClose();
         toast({
           title: "Welcome back!",
           description: "You've successfully signed in",
         });
       } else {
-        // New user, show profile form
         setUserId(newUserId);
         setShowProfileForm(true);
       }
