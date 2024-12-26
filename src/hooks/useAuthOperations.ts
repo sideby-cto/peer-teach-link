@@ -22,11 +22,9 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
         throw error;
       }
       
-      const session = await waitForSession();
-      onSuccess(session.user.id);
       toast({
         title: "Account created",
-        description: "Please complete your teacher profile",
+        description: "Please check your email for a confirmation link before signing in.",
       });
     } catch (error) {
       toast({
@@ -52,12 +50,12 @@ export const useAuthOperations = (onSuccess: (userId: string) => void) => {
         throw error;
       }
       
+      const session = await waitForSession();
+      onSuccess(session.user.id);
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in",
       });
-      const session = await waitForSession();
-      onSuccess(session.user.id);
     } catch (error) {
       toast({
         title: "Error",
