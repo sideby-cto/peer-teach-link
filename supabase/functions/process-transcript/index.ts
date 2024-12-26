@@ -24,9 +24,17 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
     if (!apiKey) {
-      console.error('Perplexity API key not found')
+      console.error('Perplexity API key not found in environment variables')
       return new Response(
-        JSON.stringify({ error: 'API key configuration error' }),
+        JSON.stringify({ error: 'API key configuration error - key not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+
+    if (apiKey.length < 30) {
+      console.error('Invalid Perplexity API key format')
+      return new Response(
+        JSON.stringify({ error: 'Invalid API key format' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
@@ -74,12 +82,11 @@ serve(async (req) => {
       console.error('Response status:', response.status);
       console.error('Response status text:', response.statusText);
       
-      // More specific error for auth issues
       if (response.status === 401) {
-        throw new Error('Invalid Perplexity API key. Please check your API key configuration.');
+        throw new Error('Invalid Perplexity API key or authentication failed. Please verify your API key.');
       }
       
-      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     console.log('Received response from Perplexity API');
@@ -88,7 +95,7 @@ serve(async (req) => {
 
     if (!result.choices?.[0]?.message?.content) {
       console.error('Invalid API response structure:', JSON.stringify(result, null, 2));
-      throw new Error('Invalid response from Perplexity API');
+      throw new Error('Invalid response format from Perplexity API');
     }
 
     const postContent = result.choices[0].message.content;
@@ -121,9 +128,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error processing transcript:', error);
     console.error('Error stack:', error.stack);
+    
+    // Provide a more user-friendly error message
+    const userMessage = error.message.includes('API key') 
+      ? error.message 
+      : 'An error occurred while processing the transcript. Please try again.';
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: userMessage,
+        details: error.message,
         stack: error.stack 
       }),
       {
