@@ -31,7 +31,7 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
           .select('id')
           .eq('follower_id', user.id)
           .eq('following_id', teacherId)
-          .single();
+          .maybeSingle();
 
         setIsFollowing(!!followers);
       } catch (error) {
@@ -45,14 +45,28 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
   const handleFollow = async () => {
     try {
       setIsLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (authError || !user) {
         toast({
           title: "Authentication required",
           description: "Please sign in to follow teachers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // First check if the current user has a teacher profile
+      const { data: currentTeacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!currentTeacher) {
+        toast({
+          title: "Profile required",
+          description: "Please complete your teacher profile first",
           variant: "destructive",
         });
         return;
@@ -100,14 +114,28 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
 
   const handleConnect = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (!user) {
+      if (authError || !user) {
         toast({
           title: "Authentication required",
           description: "Please sign in to connect with teachers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if the current user has a teacher profile
+      const { data: currentTeacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!currentTeacher) {
+        toast({
+          title: "Profile required",
+          description: "Please complete your teacher profile first",
           variant: "destructive",
         });
         return;
