@@ -36,9 +36,14 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
     setIsLoading(true);
 
     try {
+      // Get the user's email from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("User email not found");
+
       const { error } = await supabase.from("teachers").insert([
         {
-          id: userId,
+          id: userId, // Use the provided userId which matches auth.uid()
+          email: user.email,
           full_name: formData.fullName,
           title: formData.title,
           school: formData.school,
@@ -57,6 +62,7 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
       
       onComplete();
     } catch (error) {
+      console.error("Profile creation error:", error);
       toast({
         title: "Error",
         description: "Failed to create profile. Please try again.",
