@@ -61,7 +61,7 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
       // Create the teacher profile
       const { error: insertError } = await supabase.from("teachers").insert([
         {
-          id: userId, // Use the provided userId which matches auth.uid()
+          id: userId,
           email: user.email,
           full_name: formData.fullName,
           title: formData.title,
@@ -78,7 +78,7 @@ export function TeacherProfileForm({ onComplete, userId }: TeacherProfileFormPro
 
       toast({
         title: "Profile created",
-        description: "Welcome to TeachConnect!",
+        description: "Welcome to sideby!",
       });
       
       onComplete();
