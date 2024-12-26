@@ -24,17 +24,9 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
     if (!apiKey) {
-      console.error('Perplexity API key not found in environment variables')
+      console.error('Perplexity API key not found')
       return new Response(
-        JSON.stringify({ error: 'API key configuration error - key not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
-    }
-
-    if (apiKey.length < 30) {
-      console.error('Invalid Perplexity API key format')
-      return new Response(
-        JSON.stringify({ error: 'Invalid API key format' }),
+        JSON.stringify({ error: 'Perplexity API key not found. Please add it in the Supabase Edge Function secrets.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
@@ -83,7 +75,14 @@ serve(async (req) => {
       console.error('Response status text:', response.statusText);
       
       if (response.status === 401) {
-        throw new Error('Invalid Perplexity API key or authentication failed. Please verify your API key.');
+        console.error('Authentication failed with Perplexity API');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Authentication failed with Perplexity API. Please check your API key.',
+            details: errorText
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        )
       }
       
       throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
@@ -127,18 +126,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error processing transcript:', error);
-    console.error('Error stack:', error.stack);
-    
-    // Provide a more user-friendly error message
-    const userMessage = error.message.includes('API key') 
-      ? error.message 
-      : 'An error occurred while processing the transcript. Please try again.';
     
     return new Response(
       JSON.stringify({ 
-        error: userMessage,
-        details: error.message,
-        stack: error.stack 
+        error: 'Failed to process transcript. Please try again or contact support if the issue persists.',
+        details: error.message
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
