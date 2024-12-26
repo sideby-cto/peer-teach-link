@@ -36,6 +36,29 @@ export function TranscriptDropzone({
     setIsDragging(false);
   };
 
+  const parseVTTContent = (content: string): string => {
+    // Remove WebVTT header and metadata
+    const lines = content.split('\n');
+    let transcript = '';
+    let isInCue = false;
+
+    for (const line of lines) {
+      // Skip WebVTT header
+      if (line.includes('WEBVTT')) continue;
+      // Skip empty lines and timecodes
+      if (line.trim() === '' || line.includes('-->')) continue;
+      // Skip numeric cue identifiers
+      if (/^\d+$/.test(line.trim())) continue;
+
+      // Add the actual text content
+      if (line.trim() !== '') {
+        transcript += line.trim() + ' ';
+      }
+    }
+
+    return transcript.trim();
+  };
+
   const processTranscript = async (text: string) => {
     try {
       console.log('Processing transcript:', text.slice(0, 100)); // Log first 100 chars for debugging
@@ -80,10 +103,11 @@ export function TranscriptDropzone({
         return;
       }
 
-      if (file.type !== 'text/plain') {
+      // Accept both .txt and .vtt files
+      if (file.type !== 'text/plain' && !file.name.endsWith('.vtt')) {
         toast({
           title: "Invalid file type",
-          description: "Please drop a text (.txt) file containing your conversation transcript.",
+          description: "Please drop a text (.txt) or subtitle (.vtt) file containing your conversation transcript.",
           variant: "destructive",
         });
         return;
@@ -99,7 +123,10 @@ export function TranscriptDropzone({
         return;
       }
 
-      await processTranscript(text);
+      // Parse VTT content if it's a .vtt file
+      const processedText = file.name.endsWith('.vtt') ? parseVTTContent(text) : text;
+      
+      await processTranscript(processedText);
       
       toast({
         title: "Transcript processed",
@@ -134,7 +161,7 @@ export function TranscriptDropzone({
       ) : (
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            Drop your Upduo conversation transcript here
+            Drop your Upduo conversation transcript here (.txt or .vtt)
           </p>
           <p className="text-xs text-gray-500">
             We'll analyze it and create a post to share your insights
