@@ -7,7 +7,7 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
 } from "@/components/ui/breadcrumb";
-import { HomeIcon } from "lucide-react";
+import { HomeIcon, Loader2 } from "lucide-react";
 
 const ApprovedPosts = () => {
   const { posts, isLoading, error, approvePost } = useApprovedPosts();
@@ -15,34 +15,42 @@ const ApprovedPosts = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
-      <main className="pt-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <Breadcrumb className="mb-6">
+      <main className="container mx-auto pt-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <Breadcrumb className="mb-8">
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/" className="flex items-center gap-2">
+                <BreadcrumbLink href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
                   <HomeIcon className="h-4 w-4" />
                   Timeline
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbItem>
-                <BreadcrumbLink>Posts</BreadcrumbLink>
+                <BreadcrumbLink className="text-gray-900 font-medium">Posts</BreadcrumbLink>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
 
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Posts</h1>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Approved Posts</h1>
           </div>
 
           {isLoading ? (
-            <p>Loading posts...</p>
+            <div className="flex justify-center items-center min-h-[200px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : error ? (
-            <p className="text-center text-red-500 mt-8">Error loading posts.</p>
+            <div className="text-center py-8">
+              <p className="text-red-500 font-medium">Error loading posts. Please try again later.</p>
+            </div>
           ) : posts.length === 0 ? (
-            <p className="text-center text-gray-500 mt-8">No posts yet.</p>
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+              <p className="text-gray-500 text-lg">No posts available yet.</p>
+            </div>
           ) : (
-            <PostList posts={posts} onApprove={approvePost} />
+            <div className="space-y-6">
+              <PostList posts={posts} onApprove={approvePost} />
+            </div>
           )}
         </div>
       </main>
