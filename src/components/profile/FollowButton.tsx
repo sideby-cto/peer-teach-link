@@ -73,13 +73,41 @@ export const FollowButton = ({ teacherId, teacherName, isInitiallyFollowing }: F
           description: `You are no longer following ${teacherName}`,
         });
       } else {
+        // Check if already following to prevent duplicate attempts
+        const { data: existingFollow } = await supabase
+          .from('followers')
+          .select('id')
+          .match({ follower_id: user.id, following_id: teacherId })
+          .maybeSingle();
+
+        if (existingFollow) {
+          setIsFollowing(true);
+          toast({
+            title: "Already following",
+            description: `You are already following ${teacherName}`,
+          });
+          return;
+        }
+
         const { error } = await supabase
           .from('followers')
           .insert([
             { follower_id: user.id, following_id: teacherId }
           ]);
 
-        if (error) throw error;
+        if (error) {
+          // Handle the specific case of duplicate follow attempts
+          if (error.code === '23505') {
+            setIsFollowing(true);
+            toast({
+              title: "Already following",
+              description: `You are already following ${teacherName}`,
+            });
+            return;
+          }
+          throw error;
+        }
+        
         setIsFollowing(true);
         toast({
           title: "Following",
