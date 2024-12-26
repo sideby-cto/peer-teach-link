@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { AuthFormFields } from "./AuthFormFields";
+import { useAuthOperations } from "@/hooks/useAuthOperations";
 
 interface AuthFormProps {
   onSuccess: (userId: string) => void;
@@ -13,110 +10,26 @@ interface AuthFormProps {
 export function AuthForm({ onSuccess }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const { toast } = useToast();
-  const { waitForSession } = useAuthSession();
+  const { signUp, signIn, isLoading } = useAuthOperations(onSuccess);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        
-        if (error) {
-          // Handle rate limit error specifically
-          if (error.message.includes("rate_limit")) {
-            toast({
-              title: "Please wait",
-              description: "For security purposes, please wait a few seconds before trying again.",
-              variant: "destructive",
-            });
-            return;
-          }
-          throw error;
-        }
-        
-        const session = await waitForSession();
-        onSuccess(session.user.id);
-        toast({
-          title: "Account created",
-          description: "Please complete your teacher profile",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) {
-          // Check if this is an email confirmation error
-          if (error.message.includes("Email not confirmed")) {
-            toast({
-              title: "Email not confirmed",
-              description: "Please check your email and click the confirmation link before signing in.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          // Handle rate limit error for login attempts
-          if (error.message.includes("rate_limit")) {
-            toast({
-              title: "Please wait",
-              description: "For security purposes, please wait a few seconds before trying again.",
-              variant: "destructive",
-            });
-            return;
-          }
-          throw error;
-        }
-        
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully signed in",
-        });
-        const session = await waitForSession();
-        onSuccess(session.user.id);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (isSignUp) {
+      await signUp(email, password);
+    } else {
+      await signIn(email, password);
     }
   };
 
   return (
     <form onSubmit={handleAuth} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </div>
+      <AuthFormFields
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+      />
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Loading..." : isSignUp ? "Create account" : "Sign in"}
       </Button>
