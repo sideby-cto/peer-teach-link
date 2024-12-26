@@ -1,6 +1,5 @@
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ThumbsUp, MessageSquare, Share2, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -49,38 +48,6 @@ export const PostCard = ({ author, content, timestamp, likes, comments, isApprov
           {content}
         </p>
       </CardContent>
-      <CardFooter className="border-t pt-4 flex justify-between">
-        <Button 
-          variant="ghost" 
-          className={cn(
-            "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200 font-medium"
-          )}
-        >
-          <ThumbsUp className="h-4 w-4" />
-          <span>{likes}</span>
-        </Button>
-        <Button 
-          variant="ghost" 
-          className={cn(
-            "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200 font-medium"
-          )}
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span>{comments}</span>
-        </Button>
-        <Button 
-          variant="ghost" 
-          className={cn(
-            "flex items-center gap-2 text-gray-600 hover:text-primary hover:bg-primary/10",
-            "transition-colors duration-200 font-medium"
-          )}
-        >
-          <Share2 className="h-4 w-4" />
-          <span>Share</span>
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
