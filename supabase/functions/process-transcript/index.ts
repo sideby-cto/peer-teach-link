@@ -1,5 +1,6 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,34 +8,26 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     const { transcript } = await req.json();
-    console.log('Received transcript:', transcript);
 
     if (!transcript) {
       throw new Error('No transcript provided');
     }
 
-    const apiKey = Deno.env.get('PERPLEXITY_API_KEY');
-    if (!apiKey) {
-      throw new Error('Perplexity API key not found');
-    }
-
-    // First, generate short posts
-    console.log('Generating short posts...');
-    const shortPostsResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+    // Call Perplexity API for short posts
+    const shortPostsResult = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
+        model: 'pplx-7b-chat',
         messages: [
           {
             role: 'system',
@@ -42,32 +35,25 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: transcript.replace(/[\n\r\t]/g, ' ').trim()
+            content: transcript
           }
-        ],
-        temperature: 0.2,
-      }),
+        ]
+      })
     });
 
-    if (!shortPostsResponse.ok) {
-      const errorText = await shortPostsResponse.text();
-      console.error('Short posts API error:', errorText);
-      throw new Error(`Failed to generate short posts: ${errorText}`);
+    if (!shortPostsResult.ok) {
+      throw new Error(`Perplexity API error for short posts: ${shortPostsResult.statusText}`);
     }
 
-    const shortPostsResult = await shortPostsResponse.json();
-    console.log('Short posts API raw response:', shortPostsResult);
-
-    // Then, generate one article-style post
-    console.log('Generating article...');
-    const articlesResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+    // Call Perplexity API for article
+    const articlesResult = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
+        model: 'pplx-7b-chat',
         messages: [
           {
             role: 'system',
@@ -75,118 +61,94 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: transcript.replace(/[\n\r\t]/g, ' ').trim()
+            content: transcript
           }
-        ],
-        temperature: 0.2,
-      }),
+        ]
+      })
     });
 
-    if (!articlesResponse.ok) {
-      const errorText = await articlesResponse.text();
-      console.error('Articles API error:', errorText);
-      throw new Error(`Failed to generate articles: ${errorText}`);
+    if (!articlesResult.ok) {
+      throw new Error(`Perplexity API error for articles: ${articlesResult.statusText}`);
     }
 
-    const articlesResult = await articlesResponse.json();
-    console.log('Article API raw response:', articlesResult);
+    const shortPostsData = await shortPostsResult.json();
+    const articlesData = await articlesResult.json();
 
-    // Parse and validate the responses
     let shortPosts;
     let articles;
+
     try {
-      const sanitizeContent = (content: string) => {
+      const extractJsonArray = (apiResponse: any) => {
         try {
-          // Extract content from the API response
-          const message = content.choices[0].message.content;
+          const content = apiResponse.choices[0].message.content.trim();
           
-          // Remove any markdown code block syntax
-          let cleaned = message.replace(/```json\n?|```/g, '').trim();
+          // Find the first [ and last ]
+          const start = content.indexOf('[');
+          const end = content.lastIndexOf(']');
           
-          // Remove any control characters
-          cleaned = cleaned.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-          
-          // Remove any additional text before or after the JSON array
-          const arrayStart = cleaned.indexOf('[');
-          const arrayEnd = cleaned.lastIndexOf(']');
-          
-          if (arrayStart === -1 || arrayEnd === -1) {
-            throw new Error('No valid JSON array found in response');
+          if (start === -1 || end === -1) {
+            throw new Error('No JSON array found in response');
           }
           
-          cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
+          // Extract just the array portion
+          const jsonStr = content.substring(start, end + 1);
           
-          // Parse to validate it's proper JSON
-          const parsed = JSON.parse(cleaned);
+          // Parse and validate
+          const parsed = JSON.parse(jsonStr);
           if (!Array.isArray(parsed)) {
-            throw new Error('Response is not a JSON array');
+            throw new Error('Parsed content is not an array');
           }
           
           return parsed;
         } catch (error) {
-          console.error('Error sanitizing content:', error);
+          console.error('Error extracting JSON array:', error);
           throw error;
         }
       };
 
-      shortPosts = sanitizeContent(shortPostsResult);
-      articles = sanitizeContent(articlesResult);
+      shortPosts = extractJsonArray(shortPostsData);
+      articles = extractJsonArray(articlesData);
 
-      // Validate content
-      if (!shortPosts.every(post => typeof post === 'string')) {
-        throw new Error('All short posts must be strings');
+      // Additional validation
+      if (!shortPosts.every(post => typeof post === 'string' && post.length <= 280)) {
+        throw new Error('Invalid short posts format or length');
       }
-      if (!articles.every(article => typeof article === 'string')) {
-        throw new Error('All articles must be strings');
+
+      if (!articles.every(article => typeof article === 'string' && article.length >= 100)) {
+        throw new Error('Invalid article format or length');
       }
+
     } catch (error) {
-      console.error('Error parsing AI responses:', error);
-      console.log('Short posts raw content:', shortPostsResult.choices[0].message.content);
-      console.log('Articles raw content:', articlesResult.choices[0].message.content);
+      console.error('Error processing AI responses:', error);
       throw new Error(`Failed to parse AI responses: ${error.message}`);
     }
 
-    // Create post suggestions
-    const postSuggestions = [
-      ...shortPosts.map((content: string) => ({
-        content: content.trim(),
-        post_type: 'short'
-      })),
-      ...articles.map((content: string) => ({
-        content: content.trim(),
-        post_type: 'article'
-      }))
-    ];
-
-    // Create a profile suggestion
-    const profileSuggestion = {
-      title: "Teacher",
-      bio: "Experienced educator passionate about student success.",
-      subjects: "General Education",
-      stance: "Dedicated to fostering a growth mindset and creating an inclusive learning environment where every student can thrive."
-    };
-
-    console.log('Successfully processed transcript, returning response');
     return new Response(
       JSON.stringify({
-        postSuggestions,
-        suggestion: profileSuggestion
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error('Error processing transcript:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Failed to process transcript',
-        details: error.stack
+        shortPosts,
+        articles
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+        details: error.toString()
+      }),
+      { 
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       }
     );
   }
