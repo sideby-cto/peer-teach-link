@@ -43,6 +43,11 @@ export const Navigation = () => {
       description: "View and share teaching insights"
     },
     {
+      title: "Discover",
+      href: "/discover",
+      description: "Find and connect with other teachers"
+    },
+    {
       title: "Approved Posts",
       href: "/approved-posts",
       description: "Browse approved teaching conversations"
