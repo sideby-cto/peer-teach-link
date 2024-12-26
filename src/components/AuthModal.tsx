@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,11 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 import { TeacherProfileForm } from "./TeacherProfileForm";
+import { AuthForm } from "./auth/AuthForm";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 export function AuthModal({
   isOpen,
@@ -20,77 +18,30 @@ export function AuthModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const { checkSession } = useAuthSession();
   const { toast } = useToast();
 
-  // Add session check
   useEffect(() => {
     if (showProfileForm) {
-      const checkSession = async () => {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error || !session) {
-          toast({
-            title: "Session Error",
-            description: "Please sign in again to complete your profile",
-            variant: "destructive",
-          });
+      const verifySession = async () => {
+        const isValid = await checkSession();
+        if (!isValid) {
           setShowProfileForm(false);
           onClose();
         }
       };
-      checkSession();
+      verifySession();
     }
-  }, [showProfileForm, toast, onClose]);
+  }, [showProfileForm, checkSession, onClose]);
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        
-        // Wait for session to be established
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
-          throw new Error("Failed to establish session. Please try signing in.");
-        }
-
-        setUserId(session.user.id);
-        setShowProfileForm(true);
-        toast({
-          title: "Account created",
-          description: "Please complete your teacher profile",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully signed in",
-        });
-        onClose();
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+  const handleAuthSuccess = (newUserId: string) => {
+    if (newUserId) {
+      setUserId(newUserId);
+      setShowProfileForm(true);
+    } else {
+      onClose();
     }
   };
 
@@ -119,52 +70,12 @@ export function AuthModal({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>{isSignUp ? "Create account" : "Sign in"}</DialogTitle>
+              <DialogTitle>Welcome</DialogTitle>
               <DialogDescription>
-                {isSignUp
-                  ? "Join our community of educators"
-                  : "Welcome back! Please sign in to continue"}
+                Join our community of educators or sign in to continue
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading
-                  ? "Loading..."
-                  : isSignUp
-                  ? "Create account"
-                  : "Sign in"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => setIsSignUp(!isSignUp)}
-              >
-                {isSignUp
-                  ? "Already have an account? Sign in"
-                  : "Need an account? Sign up"}
-              </Button>
-            </form>
+            <AuthForm onSuccess={handleAuthSuccess} />
           </>
         )}
       </DialogContent>
