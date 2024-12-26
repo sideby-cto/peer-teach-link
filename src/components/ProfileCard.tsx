@@ -62,11 +62,10 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
             <span className="font-semibold">Experience:</span> {experience}
           </p>
           {stance && (
-            <p className="text-sm mt-4">
-              <span className="font-semibold">Teaching Philosophy:</span>
-              <br />
-              <span className="text-gray-700 italic">{stance}</span>
-            </p>
+            <div className="mt-4 p-4 bg-primary/5 rounded-lg">
+              <h4 className="text-sm font-semibold mb-2">Teaching Philosophy</h4>
+              <p className="text-sm text-gray-700 italic">{stance}</p>
+            </div>
           )}
           <div className="flex gap-2 mt-4">
             <FollowButton 
