@@ -38,7 +38,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each). IMPORTANT: Respond with ONLY a JSON array of strings. Example: ["Post 1", "Post 2"]. No markdown, no explanations.'
+            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each). Return ONLY a JSON array of strings, nothing else. Example: ["First post", "Second post"]'
           },
           {
             role: 'user',
@@ -71,7 +71,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words). IMPORTANT: Respond with ONLY a JSON array with one string. Example: ["Your article text"]. No markdown, no explanations.'
+            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words). Return ONLY a JSON array with one string, nothing else. Example: ["Your article text"]'
           },
           {
             role: 'user',
@@ -96,30 +96,41 @@ serve(async (req) => {
     let articles;
     try {
       const sanitizeContent = (content: string) => {
-        // Remove any markdown code block syntax
-        let cleaned = content.replace(/```json\n?|```/g, '').trim();
-        // Remove any control characters and normalize whitespace
-        cleaned = cleaned.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-        return cleaned;
+        try {
+          // Extract content from the API response
+          const message = content.choices[0].message.content;
+          
+          // Remove any markdown code block syntax
+          let cleaned = message.replace(/```json\n?|```/g, '').trim();
+          
+          // Remove any control characters
+          cleaned = cleaned.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+          
+          // Remove any additional text before or after the JSON array
+          const arrayStart = cleaned.indexOf('[');
+          const arrayEnd = cleaned.lastIndexOf(']');
+          
+          if (arrayStart === -1 || arrayEnd === -1) {
+            throw new Error('No valid JSON array found in response');
+          }
+          
+          cleaned = cleaned.substring(arrayStart, arrayEnd + 1);
+          
+          // Parse to validate it's proper JSON
+          const parsed = JSON.parse(cleaned);
+          if (!Array.isArray(parsed)) {
+            throw new Error('Response is not a JSON array');
+          }
+          
+          return parsed;
+        } catch (error) {
+          console.error('Error sanitizing content:', error);
+          throw error;
+        }
       };
 
-      const shortPostsContent = sanitizeContent(shortPostsResult.choices[0].message.content);
-      console.log('Sanitized short posts content:', shortPostsContent);
-      shortPosts = JSON.parse(shortPostsContent);
-
-      const articlesContent = sanitizeContent(articlesResult.choices[0].message.content);
-      console.log('Sanitized articles content:', articlesContent);
-      articles = JSON.parse(articlesContent);
-
-      // Validate arrays
-      if (!Array.isArray(shortPosts)) {
-        console.error('Invalid short posts format:', shortPosts);
-        throw new Error('Short posts must be an array');
-      }
-      if (!Array.isArray(articles)) {
-        console.error('Invalid articles format:', articles);
-        throw new Error('Articles must be an array');
-      }
+      shortPosts = sanitizeContent(shortPostsResult);
+      articles = sanitizeContent(articlesResult);
 
       // Validate content
       if (!shortPosts.every(post => typeof post === 'string')) {
