@@ -11,11 +11,23 @@ export function CreatePostForm() {
   const handlePostSuggestion = async (suggestion: { content: string }) => {
     setIsProcessing(true);
     try {
+      // Get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create posts.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("posts")
         .insert([{ 
           content: suggestion.content, 
-          teacher_id: "placeholder-id",
+          teacher_id: user.id,
           is_ai_generated: true 
         }]);
 
@@ -26,6 +38,7 @@ export function CreatePostForm() {
         description: "Your conversation has been analyzed and shared as a post.",
       });
     } catch (error) {
+      console.error('Error creating post:', error);
       toast({
         title: "Error",
         description: "Failed to create post. Please try again.",
