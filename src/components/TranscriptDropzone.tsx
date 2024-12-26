@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface TranscriptDropzoneProps {
@@ -26,6 +28,7 @@ export function TranscriptDropzone({
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -87,32 +90,27 @@ export function TranscriptDropzone({
     }
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleFileSelection = async (file: File) => {
+    if (!file) {
+      toast({
+        title: "No file detected",
+        description: "Please try selecting the file again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.type !== 'text/plain' && !file.name.endsWith('.vtt')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a text (.txt) or subtitle (.vtt) file containing your conversation transcript.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
-
     try {
-      const file = e.dataTransfer.files[0];
-      if (!file) {
-        toast({
-          title: "No file detected",
-          description: "Please try dropping the file again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Accept both .txt and .vtt files
-      if (file.type !== 'text/plain' && !file.name.endsWith('.vtt')) {
-        toast({
-          title: "Invalid file type",
-          description: "Please drop a text (.txt) or subtitle (.vtt) file containing your conversation transcript.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const text = await file.text();
       if (!text.trim()) {
         toast({
@@ -123,9 +121,7 @@ export function TranscriptDropzone({
         return;
       }
 
-      // Parse VTT content if it's a .vtt file
       const processedText = file.name.endsWith('.vtt') ? parseVTTContent(text) : text;
-      
       await processTranscript(processedText);
       
       toast({
@@ -133,7 +129,7 @@ export function TranscriptDropzone({
         description: "We've analyzed your conversation and generated content.",
       });
     } catch (error) {
-      console.error('Error in handleDrop:', error);
+      console.error('Error processing file:', error);
       toast({
         title: "Error processing transcript",
         description: "Failed to process the transcript. Please try again.",
@@ -142,6 +138,24 @@ export function TranscriptDropzone({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    await handleFileSelection(file);
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleFileSelection(file);
+    }
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -153,19 +167,39 @@ export function TranscriptDropzone({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        accept=".txt,.vtt"
+        className="hidden"
+      />
+      
       {isProcessing || externalIsProcessing ? (
         <div className="space-y-2">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" />
           <p className="text-sm text-gray-600">Processing transcript...</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-600">
-            Drop your Upduo conversation transcript here (.txt or .vtt)
-          </p>
-          <p className="text-xs text-gray-500">
-            We'll analyze it and create a post to share your insights
-          </p>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              Drop your Upduo conversation transcript here (.txt or .vtt)
+            </p>
+            <p className="text-xs text-gray-500">
+              We'll analyze it and create a post to share your insights
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              onClick={handleButtonClick}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Upload from computer
+            </Button>
+          </div>
         </div>
       )}
     </Card>
