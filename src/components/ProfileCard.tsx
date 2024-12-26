@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { MessageSquare } from "lucide-react";
@@ -18,6 +18,29 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Check if the current user is following this teacher
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: followers } = await supabase
+          .from('followers')
+          .select('id')
+          .eq('follower_id', user.id)
+          .eq('following_id', teacherId)
+          .single();
+
+        setIsFollowing(!!followers);
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+      }
+    };
+
+    checkFollowStatus();
+  }, [teacherId]);
 
   const handleFollow = async () => {
     try {
@@ -64,6 +87,7 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
         });
       }
     } catch (error) {
+      console.error('Error managing follow:', error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -96,18 +120,21 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
           { 
             teacher1_id: user.id, 
             teacher2_id: teacherId,
-            status: 'scheduled',
-            scheduled_at: null // Will be set when the other teacher accepts
+            status: 'scheduled'
           }
         ]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating conversation:', error);
+        throw error;
+      }
 
       toast({
         title: "Connection requested",
         description: `We'll notify you when ${name} accepts your 20-minute conversation request`,
       });
     } catch (error) {
+      console.error('Error connecting:', error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
