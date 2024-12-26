@@ -11,9 +11,10 @@ interface ProfileCardProps {
   experience: string;
   imageUrl: string;
   teacherId: string;
+  stance?: string;
 }
 
-export const ProfileCard = ({ name, title, school, experience, imageUrl, teacherId }: ProfileCardProps) => {
+export const ProfileCard = ({ name, title, school, experience, imageUrl, teacherId, stance }: ProfileCardProps) => {
   const [isInitiallyFollowing, setIsInitiallyFollowing] = useState(false);
 
   // Check if the current user is following this teacher
@@ -60,6 +61,13 @@ export const ProfileCard = ({ name, title, school, experience, imageUrl, teacher
           <p className="text-sm">
             <span className="font-semibold">Experience:</span> {experience}
           </p>
+          {stance && (
+            <p className="text-sm mt-4">
+              <span className="font-semibold">Teaching Philosophy:</span>
+              <br />
+              <span className="text-gray-700 italic">{stance}</span>
+            </p>
+          )}
           <div className="flex gap-2 mt-4">
             <FollowButton 
               teacherId={teacherId}

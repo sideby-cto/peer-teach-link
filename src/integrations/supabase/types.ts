@@ -89,6 +89,7 @@ export type Database = {
           is_approved: boolean | null
           likes_count: number | null
           original_transcript_id: string | null
+          post_type: string | null
           teacher_id: string | null
         }
         Insert: {
@@ -99,6 +100,7 @@ export type Database = {
           is_approved?: boolean | null
           likes_count?: number | null
           original_transcript_id?: string | null
+          post_type?: string | null
           teacher_id?: string | null
         }
         Update: {
@@ -109,6 +111,7 @@ export type Database = {
           is_approved?: boolean | null
           likes_count?: number | null
           original_transcript_id?: string | null
+          post_type?: string | null
           teacher_id?: string | null
         }
         Relationships: [
@@ -131,6 +134,7 @@ export type Database = {
           full_name: string
           id: string
           school: string | null
+          stance: string | null
           subjects: string[] | null
           title: string | null
         }
@@ -143,6 +147,7 @@ export type Database = {
           full_name: string
           id?: string
           school?: string | null
+          stance?: string | null
           subjects?: string[] | null
           title?: string | null
         }
@@ -155,6 +160,7 @@ export type Database = {
           full_name?: string
           id?: string
           school?: string | null
+          stance?: string | null
           subjects?: string[] | null
           title?: string | null
         }

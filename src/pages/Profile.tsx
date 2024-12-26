@@ -104,6 +104,7 @@ const Profile = () => {
             experience={`${profile.experience_years} years in education`}
             imageUrl={profile.avatar_url || "/placeholder.svg"}
             teacherId={profile.id}
+            stance={profile.stance}
           />
         </div>
       </main>
