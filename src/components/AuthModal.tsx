@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TeacherProfileForm } from "./TeacherProfileForm";
 import { AuthForm } from "./auth/AuthForm";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { supabase } from "@/lib/supabase";
 
 export function AuthModal({
   isOpen,
@@ -36,10 +37,36 @@ export function AuthModal({
     }
   }, [showProfileForm, checkSession, onClose]);
 
-  const handleAuthSuccess = (newUserId: string) => {
+  const checkExistingProfile = async (userId: string) => {
+    const { data: profile, error } = await supabase
+      .from('teachers')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking profile:', error);
+      return false;
+    }
+
+    return !!profile;
+  };
+
+  const handleAuthSuccess = async (newUserId: string) => {
     if (newUserId) {
-      setUserId(newUserId);
-      setShowProfileForm(true);
+      const hasProfile = await checkExistingProfile(newUserId);
+      if (hasProfile) {
+        // User already has a profile, just close the modal
+        onClose();
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully signed in",
+        });
+      } else {
+        // New user, show profile form
+        setUserId(newUserId);
+        setShowProfileForm(true);
+      }
     } else {
       onClose();
     }
