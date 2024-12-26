@@ -38,7 +38,8 @@ export function TranscriptDropzone({
 
   const processTranscript = async (text: string) => {
     try {
-      console.log('Sending transcript to process-transcript function')
+      console.log('Processing transcript:', text.slice(0, 100)); // Log first 100 chars for debugging
+      
       const { data, error } = await supabase.functions.invoke('process-transcript', {
         body: { transcript: text }
       });
