@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +28,25 @@ export function AuthModal({
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Add session check
+  useEffect(() => {
+    if (showProfileForm) {
+      const checkSession = async () => {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          toast({
+            title: "Session Error",
+            description: "Please sign in again to complete your profile",
+            variant: "destructive",
+          });
+          setShowProfileForm(false);
+          onClose();
+        }
+      };
+      checkSession();
+    }
+  }, [showProfileForm, toast, onClose]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -40,7 +59,13 @@ export function AuthModal({
         });
         if (error) throw error;
         
-        setUserId(data.user?.id || null);
+        // Wait for session to be established
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+          throw new Error("Failed to establish session. Please try signing in.");
+        }
+
+        setUserId(session.user.id);
         setShowProfileForm(true);
         toast({
           title: "Account created",
