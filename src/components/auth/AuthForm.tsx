@@ -28,7 +28,19 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          // Handle rate limit error specifically
+          if (error.message.includes("rate_limit")) {
+            toast({
+              title: "Please wait",
+              description: "For security purposes, please wait a few seconds before trying again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          throw error;
+        }
         
         const session = await waitForSession();
         onSuccess(session.user.id);
@@ -48,6 +60,16 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
             toast({
               title: "Email not confirmed",
               description: "Please check your email and click the confirmation link before signing in.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // Handle rate limit error for login attempts
+          if (error.message.includes("rate_limit")) {
+            toast({
+              title: "Please wait",
+              description: "For security purposes, please wait a few seconds before trying again.",
               variant: "destructive",
             });
             return;
