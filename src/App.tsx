@@ -27,6 +27,7 @@ function App() {
   const navigate = useNavigate();
   const { session, isLoading: sessionLoading, error: sessionError } = useSessionContext();
 
+  // Handle session errors
   useEffect(() => {
     if (sessionError) {
       console.error('Session error:', sessionError);
@@ -50,6 +51,8 @@ function App() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
+        // Clear any stored session data
+        localStorage.removeItem('supabase.auth.token');
         toast({
           title: "Session ended",
           description: "Please sign in to continue.",

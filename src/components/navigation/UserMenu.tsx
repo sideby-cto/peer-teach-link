@@ -20,21 +20,21 @@ export const UserMenu = ({ user }: UserMenuProps) => {
   
   const handleSignOut = async () => {
     try {
+      // First, clear any stored session data
+      localStorage.removeItem('supabase.auth.token');
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
         throw error;
       }
       
-      // Clear any stored session data
-      localStorage.removeItem('supabase.auth.token');
-      
       toast({
         title: "Signed out successfully",
         description: "You have been signed out of your account.",
       });
       
-      // Force reload to clear any cached state
+      // Force a complete page reload to clear any cached state
       window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);

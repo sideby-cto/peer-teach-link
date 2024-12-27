@@ -19,7 +19,7 @@ const getBaseUrl = () => {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SessionContextProvider supabaseClient={supabase}>
+    <SessionContextProvider supabaseClient={supabase} initialSession={null}>
       <BrowserRouter basename={getBaseUrl()}>
         <QueryClientProvider client={queryClient}>
           <App />
