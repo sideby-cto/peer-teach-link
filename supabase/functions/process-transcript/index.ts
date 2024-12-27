@@ -1,152 +1,84 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY')!;
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { transcript } = await req.json();
-    console.log('Processing transcript:', transcript);
+    console.log('Processing transcript request received')
+    const { content } = await req.json()
 
-    if (!transcript) {
-      throw new Error('No transcript provided');
+    if (!content) {
+      console.error('No content provided in request')
+      throw new Error('No content provided')
     }
 
-    // Call Perplexity API for short posts
-    const shortPostsResult = await fetch('https://api.perplexity.ai/chat/completions', {
+    // Get the API key from environment variables
+    const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
+    if (!apiKey) {
+      console.error('PERPLEXITY_API_KEY not found in environment variables')
+      throw new Error('API configuration missing')
+    }
+
+    console.log('Making request to Perplexity API')
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'pplx-7b-chat',
+        model: 'mixtral-8x7b-instruct',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each) that capture key insights. Return ONLY a JSON array of strings, nothing else.'
+            content: 'You are an AI assistant that helps analyze teacher conversations. Provide a concise summary of the key points discussed.'
           },
           {
             role: 'user',
-            content: transcript
+            content: content
           }
-        ]
+        ],
+        max_tokens: 150
       })
-    });
+    })
 
-    if (!shortPostsResult.ok) {
-      console.error('Perplexity API error for short posts:', await shortPostsResult.text());
-      throw new Error(`Perplexity API error for short posts: ${shortPostsResult.statusText}`);
+    if (!response.ok) {
+      console.error('Perplexity API error:', await response.text())
+      throw new Error(`API request failed with status ${response.status}`)
     }
 
-    const shortPostsData = await shortPostsResult.json();
-    console.log('Short posts response:', shortPostsData);
-
-    // Call Perplexity API for article
-    const articlesResult = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'pplx-7b-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words) that expands on the key insights. Return ONLY a JSON array with one string, nothing else.'
-          },
-          {
-            role: 'user',
-            content: transcript
-          }
-        ]
-      })
-    });
-
-    if (!articlesResult.ok) {
-      console.error('Perplexity API error for articles:', await articlesResult.text());
-      throw new Error(`Perplexity API error for articles: ${articlesResult.statusText}`);
-    }
-
-    const articlesData = await articlesResult.json();
-    console.log('Articles response:', articlesData);
-
-    const extractContent = (apiResponse: any) => {
-      try {
-        const content = apiResponse.choices[0].message.content.trim();
-        let jsonContent;
-        
-        // Try to parse the content directly first
-        try {
-          jsonContent = JSON.parse(content);
-        } catch {
-          // If direct parsing fails, try to find and parse just the array portion
-          const start = content.indexOf('[');
-          const end = content.lastIndexOf(']');
-          
-          if (start === -1 || end === -1) {
-            throw new Error('No JSON array found in response');
-          }
-          
-          jsonContent = JSON.parse(content.substring(start, end + 1));
-        }
-        
-        if (!Array.isArray(jsonContent)) {
-          throw new Error('Parsed content is not an array');
-        }
-        
-        return jsonContent;
-      } catch (error) {
-        console.error('Error extracting content:', error);
-        throw error;
-      }
-    };
-
-    const shortPosts = extractContent(shortPostsData).map(post => ({
-      content: post,
-      post_type: 'short'
-    }));
-
-    const articles = extractContent(articlesData).map(article => ({
-      content: article,
-      post_type: 'article'
-    }));
-
-    const postSuggestions = [...shortPosts, ...articles];
+    const result = await response.json()
+    console.log('Successfully processed transcript')
 
     return new Response(
-      JSON.stringify({ postSuggestions }),
+      JSON.stringify({
+        summary: result.choices[0].message.content
+      }),
       { 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        } 
+      }
+    )
+
+  } catch (error) {
+    console.error('Error processing transcript:', error)
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'Failed to process transcript'
+      }),
+      { 
+        status: 500,
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json'
         }
       }
-    );
-
-  } catch (error) {
-    console.error('Error processing transcript:', error);
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: error.toString()
-      }),
-      { 
-        status: error.message.includes('No transcript') ? 400 : 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    )
   }
-});
+})
