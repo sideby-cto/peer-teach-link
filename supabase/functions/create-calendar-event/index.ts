@@ -54,8 +54,29 @@ serve(async (req) => {
     const currentTeacher = teachers.find(t => t.id === user.id)
     const otherTeacher = teachers.find(t => t.id === teacherId)
 
+    // Get and parse Google Calendar credentials
+    const credentialsString = Deno.env.get('GOOGLE_CALENDAR_CREDENTIALS')
+    if (!credentialsString) {
+      console.error('Google Calendar credentials not found')
+      return new Response(
+        JSON.stringify({ error: 'Calendar configuration missing' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    let credentials;
+    try {
+      credentials = JSON.parse(credentialsString)
+      console.log('Successfully parsed credentials')
+    } catch (error) {
+      console.error('Failed to parse credentials:', error)
+      return new Response(
+        JSON.stringify({ error: 'Invalid calendar configuration' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Set up Google Calendar API
-    const credentials = JSON.parse(Deno.env.get('GOOGLE_CALENDAR_CREDENTIALS') || '{}')
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/calendar']
@@ -89,37 +110,45 @@ serve(async (req) => {
 
     console.log('Creating calendar event:', event)
 
-    const calendarEvent = await calendar.events.insert({
-      calendarId: 'primary',
-      conferenceDataVersion: 1,
-      requestBody: event,
-    })
-
-    console.log('Calendar event created:', calendarEvent.data)
-
-    // Update the conversation in Supabase
-    const { error: conversationError } = await supabaseClient
-      .from('conversations')
-      .insert({
-        teacher1_id: user.id,
-        teacher2_id: teacherId,
-        status: 'scheduled',
-        scheduled_at: selectedTime
+    try {
+      const calendarEvent = await calendar.events.insert({
+        calendarId: 'primary',
+        conferenceDataVersion: 1,
+        requestBody: event,
       })
 
-    if (conversationError) {
-      console.error('Conversation creation error:', conversationError)
-      throw new Error(`Failed to create conversation: ${conversationError.message}`)
-    }
+      console.log('Calendar event created:', calendarEvent.data)
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        meetingLink: calendarEvent.data.hangoutLink,
-        eventId: calendarEvent.data.id
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      // Update the conversation in Supabase
+      const { error: conversationError } = await supabaseClient
+        .from('conversations')
+        .insert({
+          teacher1_id: user.id,
+          teacher2_id: teacherId,
+          status: 'scheduled',
+          scheduled_at: selectedTime
+        })
+
+      if (conversationError) {
+        console.error('Conversation creation error:', conversationError)
+        throw new Error(`Failed to create conversation: ${conversationError.message}`)
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          meetingLink: calendarEvent.data.hangoutLink,
+          eventId: calendarEvent.data.id
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    } catch (error) {
+      console.error('Calendar API error:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to create calendar event' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
   } catch (error) {
     console.error('Function error:', error)
     return new Response(
