@@ -9,11 +9,11 @@ serve(async (req) => {
 
   try {
     console.log('Processing transcript request received')
-    const { content } = await req.json()
+    const { transcript } = await req.json()
 
-    if (!content) {
-      console.error('No content provided in request')
-      throw new Error('No content provided')
+    if (!transcript) {
+      console.error('No transcript provided in request')
+      throw new Error('No transcript provided')
     }
 
     // Get the API key from environment variables
@@ -23,48 +23,60 @@ serve(async (req) => {
       throw new Error('API configuration missing')
     }
 
-    console.log('Making request to Perplexity API')
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'mixtral-8x7b-instruct',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an AI assistant that helps analyze teacher conversations. Provide a concise summary of the key points discussed.'
-          },
-          {
-            role: 'user',
-            content: content
-          }
-        ],
-        max_tokens: 150
+    console.log('Making request to Perplexity API with transcript length:', transcript.length)
+    
+    try {
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'mixtral-8x7b-instruct',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an AI assistant that helps analyze teacher conversations. Extract key information about the teacher and suggest content for their profile.'
+            },
+            {
+              role: 'user',
+              content: transcript
+            }
+          ],
+          max_tokens: 150
+        })
       })
-    })
 
-    if (!response.ok) {
-      console.error('Perplexity API error:', await response.text())
-      throw new Error(`API request failed with status ${response.status}`)
-    }
-
-    const result = await response.json()
-    console.log('Successfully processed transcript')
-
-    return new Response(
-      JSON.stringify({
-        summary: result.choices[0].message.content
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        } 
+      console.log('Perplexity API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Perplexity API error response:', errorText)
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`)
       }
-    )
+
+      const result = await response.json()
+      console.log('Successfully processed transcript, API response:', result)
+
+      return new Response(
+        JSON.stringify({
+          suggestion: {
+            content: result.choices[0].message.content
+          }
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          } 
+        }
+      )
+
+    } catch (apiError) {
+      console.error('Error calling Perplexity API:', apiError)
+      throw new Error(`Failed to process with Perplexity API: ${apiError.message}`)
+    }
 
   } catch (error) {
     console.error('Error processing transcript:', error)
