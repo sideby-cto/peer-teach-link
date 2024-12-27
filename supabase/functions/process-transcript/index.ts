@@ -14,6 +14,7 @@ serve(async (req) => {
 
   try {
     const { transcript } = await req.json();
+    console.log('Processing transcript:', transcript);
 
     if (!transcript) {
       throw new Error('No transcript provided');
@@ -31,7 +32,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each). Return ONLY a JSON array of strings, nothing else. Example: ["First post", "Second post"]'
+            content: 'You are an expert at analyzing conversations between teachers. Create 2 short posts (max 280 chars each) that capture key insights. Return ONLY a JSON array of strings, nothing else.'
           },
           {
             role: 'user',
@@ -42,8 +43,12 @@ serve(async (req) => {
     });
 
     if (!shortPostsResult.ok) {
+      console.error('Perplexity API error for short posts:', await shortPostsResult.text());
       throw new Error(`Perplexity API error for short posts: ${shortPostsResult.statusText}`);
     }
+
+    const shortPostsData = await shortPostsResult.json();
+    console.log('Short posts response:', shortPostsData);
 
     // Call Perplexity API for article
     const articlesResult = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -57,7 +62,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words). Return ONLY a JSON array with one string, nothing else. Example: ["Your article text"]'
+            content: 'You are an expert at analyzing conversations between teachers. Create 1 article (500-1000 words) that expands on the key insights. Return ONLY a JSON array with one string, nothing else.'
           },
           {
             role: 'user',
@@ -68,21 +73,23 @@ serve(async (req) => {
     });
 
     if (!articlesResult.ok) {
+      console.error('Perplexity API error for articles:', await articlesResult.text());
       throw new Error(`Perplexity API error for articles: ${articlesResult.statusText}`);
     }
 
-    const shortPostsData = await shortPostsResult.json();
     const articlesData = await articlesResult.json();
+    console.log('Articles response:', articlesData);
 
-    let shortPosts;
-    let articles;
-
-    try {
-      const extractJsonArray = (apiResponse: any) => {
+    const extractContent = (apiResponse: any) => {
+      try {
+        const content = apiResponse.choices[0].message.content.trim();
+        let jsonContent;
+        
+        // Try to parse the content directly first
         try {
-          const content = apiResponse.choices[0].message.content.trim();
-          
-          // Find the first [ and last ]
+          jsonContent = JSON.parse(content);
+        } catch {
+          // If direct parsing fails, try to find and parse just the array portion
           const start = content.indexOf('[');
           const end = content.lastIndexOf(']');
           
@@ -90,44 +97,34 @@ serve(async (req) => {
             throw new Error('No JSON array found in response');
           }
           
-          // Extract just the array portion
-          const jsonStr = content.substring(start, end + 1);
-          
-          // Parse and validate
-          const parsed = JSON.parse(jsonStr);
-          if (!Array.isArray(parsed)) {
-            throw new Error('Parsed content is not an array');
-          }
-          
-          return parsed;
-        } catch (error) {
-          console.error('Error extracting JSON array:', error);
-          throw error;
+          jsonContent = JSON.parse(content.substring(start, end + 1));
         }
-      };
-
-      shortPosts = extractJsonArray(shortPostsData);
-      articles = extractJsonArray(articlesData);
-
-      // Additional validation
-      if (!shortPosts.every(post => typeof post === 'string' && post.length <= 280)) {
-        throw new Error('Invalid short posts format or length');
+        
+        if (!Array.isArray(jsonContent)) {
+          throw new Error('Parsed content is not an array');
+        }
+        
+        return jsonContent;
+      } catch (error) {
+        console.error('Error extracting content:', error);
+        throw error;
       }
+    };
 
-      if (!articles.every(article => typeof article === 'string' && article.length >= 100)) {
-        throw new Error('Invalid article format or length');
-      }
+    const shortPosts = extractContent(shortPostsData).map(post => ({
+      content: post,
+      post_type: 'short'
+    }));
 
-    } catch (error) {
-      console.error('Error processing AI responses:', error);
-      throw new Error(`Failed to parse AI responses: ${error.message}`);
-    }
+    const articles = extractContent(articlesData).map(article => ({
+      content: article,
+      post_type: 'article'
+    }));
+
+    const postSuggestions = [...shortPosts, ...articles];
 
     return new Response(
-      JSON.stringify({
-        shortPosts,
-        articles
-      }),
+      JSON.stringify({ postSuggestions }),
       { 
         headers: { 
           ...corsHeaders,
@@ -137,14 +134,14 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error processing transcript:', error);
     return new Response(
       JSON.stringify({
         error: error.message,
         details: error.toString()
       }),
       { 
-        status: 500,
+        status: error.message.includes('No transcript') ? 400 : 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
