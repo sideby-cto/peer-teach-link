@@ -22,6 +22,7 @@ export const UserMenu = ({ user }: UserMenuProps) => {
     try {
       // First, clear any stored session data
       localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('sb-avphywyhlxajyhqudkts-auth-token');
       
       const { error } = await supabase.auth.signOut();
       if (error) {

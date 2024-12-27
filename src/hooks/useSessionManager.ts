@@ -13,6 +13,8 @@ export const useSessionManager = () => {
   useEffect(() => {
     if (sessionError) {
       console.error('Session error:', sessionError);
+      // Clear any stored session data
+      localStorage.removeItem('supabase.auth.token');
       toast({
         title: "Authentication Error",
         description: "There was a problem with your session. Please sign in again.",
