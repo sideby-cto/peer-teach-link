@@ -2,9 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from './cors.ts'
 import { validateUser, getTeachers } from './auth.ts'
 import { validateCredentials, createCalendarEvent } from './calendar.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -13,7 +13,6 @@ serve(async (req) => {
     const { teacherId, teacherName, selectedTime } = await req.json()
     console.log('Received request:', { teacherId, teacherName, selectedTime })
     
-    // Validate user and get teacher profiles
     const user = await validateUser(req)
     const { currentTeacher, otherTeacher } = await getTeachers(user.id, teacherId)
     
@@ -22,10 +21,8 @@ serve(async (req) => {
       throw new Error('Teacher profiles not found')
     }
 
-    // Get and validate Google Calendar credentials
     const credentials = validateCredentials(Deno.env.get('GOOGLE_CALENDAR_CREDENTIALS'))
     
-    // Create calendar event
     const calendarEvent = await createCalendarEvent(
       credentials,
       currentTeacher,
@@ -33,7 +30,6 @@ serve(async (req) => {
       selectedTime
     )
 
-    // Create conversation record
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
