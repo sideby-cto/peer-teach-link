@@ -24,7 +24,6 @@ export const useSessionManager = () => {
     });
   };
 
-  // Handle session errors
   useEffect(() => {
     if (sessionError) {
       console.error('Session error:', sessionError);
@@ -38,7 +37,6 @@ export const useSessionManager = () => {
     }
   }, [sessionError, toast, navigate]);
 
-  // Listen for auth changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
