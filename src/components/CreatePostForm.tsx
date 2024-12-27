@@ -123,7 +123,7 @@ export function CreatePostForm() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelPosts}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmPosts} disabled={isProcessing}>
-              {isProcessing ? "Posting..." : "Post All"}
+              {isProcessing ? "Posting..." : "Post some"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
