@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useSessionContext } from '@supabase/auth-helpers-react';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -22,23 +23,33 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { session, isLoading: sessionLoading, error: sessionError } = useSessionContext();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      toast({
+        title: "Authentication Error",
+        description: "There was a problem with your session. Please sign in again.",
+        variant: "destructive",
+      });
+      navigate("/");
+    }
+  }, [sessionError, toast, navigate]);
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+  // Wait for session loading
+  useEffect(() => {
+    if (!sessionLoading) {
+      setLoading(false);
+    }
+  }, [sessionLoading]);
+
+  // Listen for auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         toast({
           title: "Session ended",
@@ -52,7 +63,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, [navigate, toast]);
 
-  if (loading) {
+  if (loading || sessionLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
