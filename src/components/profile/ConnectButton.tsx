@@ -110,11 +110,11 @@ export const ConnectButton = ({ teacherId, teacherName }: ConnectButtonProps) =>
       });
 
       setIsOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error scheduling meeting:', error);
       toast({
         title: "Scheduling failed",
-        description: "Failed to schedule the meeting. Please try again.",
+        description: error.message || "Failed to schedule the meeting. Please try again.",
         variant: "destructive",
       });
     } finally {

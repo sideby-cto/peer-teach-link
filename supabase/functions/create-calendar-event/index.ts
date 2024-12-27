@@ -5,12 +5,19 @@ import { google } from 'npm:googleapis@126';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      }
+    })
   }
 
   try {
@@ -33,7 +40,10 @@ serve(async (req) => {
       console.error('Auth error:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
@@ -47,7 +57,10 @@ serve(async (req) => {
       console.error('Teachers fetch error:', teachersError)
       return new Response(
         JSON.stringify({ error: 'Teachers not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
@@ -60,7 +73,10 @@ serve(async (req) => {
       console.error('Google Calendar credentials not found')
       return new Response(
         JSON.stringify({ error: 'Calendar configuration missing' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
@@ -78,7 +94,10 @@ serve(async (req) => {
         console.error('Missing required fields in credentials:', missingFields)
         return new Response(
           JSON.stringify({ error: `Invalid calendar configuration: missing ${missingFields.join(', ')}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
         )
       }
 
@@ -87,7 +106,10 @@ serve(async (req) => {
       console.error('Failed to parse credentials:', error)
       return new Response(
         JSON.stringify({ error: 'Invalid calendar configuration: failed to parse JSON' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
@@ -155,20 +177,28 @@ serve(async (req) => {
           meetingLink: calendarEvent.data.hangoutLink,
           eventId: calendarEvent.data.id
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     } catch (error) {
       console.error('Calendar API error:', error)
       return new Response(
         JSON.stringify({ error: 'Failed to create calendar event: ' + error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
   } catch (error) {
     console.error('Function error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })
