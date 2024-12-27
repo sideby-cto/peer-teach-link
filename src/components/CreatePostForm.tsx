@@ -3,6 +3,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { TranscriptDropzone } from "./TranscriptDropzone";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +23,12 @@ interface PostSuggestion {
 export function CreatePostForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingPosts, setPendingPosts] = useState<PostSuggestion[] | null>(null);
+  const [selectedPosts, setSelectedPosts] = useState<Set<number>>(new Set());
   const { toast } = useToast();
 
   const handlePostSuggestions = async (suggestions: PostSuggestion[]) => {
     setPendingPosts(suggestions);
+    setSelectedPosts(new Set()); // Reset selections when new suggestions arrive
   };
 
   const handleConfirmPosts = async () => {
@@ -44,23 +47,37 @@ export function CreatePostForm() {
         return;
       }
 
-      // Insert all posts
+      // Only insert selected posts
+      const selectedPostsArray = Array.from(selectedPosts);
+      const postsToInsert = selectedPostsArray.map(index => ({
+        content: pendingPosts[index].content,
+        post_type: pendingPosts[index].post_type,
+        teacher_id: user.id,
+        is_ai_generated: true,
+        is_approved: false
+      }));
+
+      if (postsToInsert.length === 0) {
+        toast({
+          title: "No posts selected",
+          description: "Please select at least one post to share.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('posts')
-        .insert(pendingPosts.map(post => ({ 
-          content: post.content,
-          post_type: post.post_type,
-          teacher_id: user.id,
-          is_ai_generated: true,
-          is_approved: false
-        })));
+        .insert(postsToInsert);
 
       if (error) throw error;
 
       toast({
         title: "Posts created",
-        description: "Your conversations have been analyzed and shared as posts. They will be visible once approved.",
+        description: `${postsToInsert.length} post(s) have been shared and will be visible once approved.`,
       });
+      
+      setPendingPosts(null);
     } catch (error) {
       console.error('Error creating posts:', error);
       toast({
@@ -70,12 +87,22 @@ export function CreatePostForm() {
       });
     } finally {
       setIsProcessing(false);
-      setPendingPosts(null);
     }
   };
 
   const handleCancelPosts = () => {
     setPendingPosts(null);
+    setSelectedPosts(new Set());
+  };
+
+  const togglePostSelection = (index: number) => {
+    const newSelection = new Set(selectedPosts);
+    if (newSelection.has(index)) {
+      newSelection.delete(index);
+    } else {
+      newSelection.add(index);
+    }
+    setSelectedPosts(newSelection);
   };
 
   return (
@@ -97,33 +124,62 @@ export function CreatePostForm() {
       <AlertDialog open={!!pendingPosts} onOpenChange={() => setPendingPosts(null)}>
         <AlertDialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Review your posts</AlertDialogTitle>
+            <AlertDialogTitle>Select posts to share</AlertDialogTitle>
             <AlertDialogDescription className="space-y-4">
-              <p>We've generated the following posts from your transcript:</p>
+              <p>Select which insights you'd like to share:</p>
               <div className="space-y-6">
                 <div>
                   <h4 className="font-medium mb-2">Short Posts</h4>
-                  {pendingPosts?.filter(p => p.post_type === 'short').map((post, i) => (
-                    <div key={i} className="bg-muted p-4 rounded-md mb-2 whitespace-pre-wrap">
-                      {post.content}
-                    </div>
-                  ))}
+                  {pendingPosts?.map((post, i) => 
+                    post.post_type === 'short' && (
+                      <div key={i} className="flex items-start space-x-3 mb-2">
+                        <Checkbox
+                          id={`post-${i}`}
+                          checked={selectedPosts.has(i)}
+                          onCheckedChange={() => togglePostSelection(i)}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={`post-${i}`}
+                          className="text-sm leading-relaxed cursor-pointer bg-muted p-4 rounded-md flex-1 whitespace-pre-wrap"
+                        >
+                          {post.content}
+                        </label>
+                      </div>
+                    )
+                  )}
                 </div>
                 <div>
                   <h4 className="font-medium mb-2">Articles</h4>
-                  {pendingPosts?.filter(p => p.post_type === 'article').map((post, i) => (
-                    <div key={i} className="bg-muted p-4 rounded-md mb-2 whitespace-pre-wrap">
-                      {post.content}
-                    </div>
-                  ))}
+                  {pendingPosts?.map((post, i) => 
+                    post.post_type === 'article' && (
+                      <div key={i} className="flex items-start space-x-3 mb-2">
+                        <Checkbox
+                          id={`post-${i}`}
+                          checked={selectedPosts.has(i)}
+                          onCheckedChange={() => togglePostSelection(i)}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={`post-${i}`}
+                          className="text-sm leading-relaxed cursor-pointer bg-muted p-4 rounded-md flex-1 whitespace-pre-wrap"
+                        >
+                          {post.content}
+                        </label>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelPosts}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmPosts} disabled={isProcessing}>
-              {isProcessing ? "Posting..." : "Post some"}
+            <AlertDialogAction 
+              onClick={handleConfirmPosts} 
+              disabled={isProcessing || selectedPosts.size === 0}
+            >
+              {isProcessing ? "Posting..." : `Post ${selectedPosts.size} selected`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
