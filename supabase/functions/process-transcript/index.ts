@@ -51,18 +51,19 @@ serve(async (req) => {
           }
         ],
         max_tokens: 1000,
-        temperature: 0.7
+        temperature: 0.7,
+        stream: false
       })
     })
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Perplexity API error:', errorText)
-      throw new Error(`Perplexity API error: ${response.statusText}`)
+      throw new Error(`Perplexity API error: ${response.statusText}. Details: ${errorText}`)
     }
 
     const result = await response.json()
-    console.log('Received response from Perplexity API')
+    console.log('Received response from Perplexity API:', result)
 
     if (!result.choices?.[0]?.message?.content) {
       throw new Error('Invalid response format from Perplexity API')
@@ -70,7 +71,7 @@ serve(async (req) => {
 
     const content = result.choices[0].message.content
 
-    // Split content into short posts and article
+    // Parse the content into separate posts
     const posts = [
       {
         content: content,
@@ -88,7 +89,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        details: error.toString()
+        details: error.toString(),
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500,
