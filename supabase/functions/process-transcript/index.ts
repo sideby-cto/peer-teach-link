@@ -1,103 +1,72 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('Processing transcript request received')
     const { transcript } = await req.json()
+    console.log('Processing transcript:', transcript.substring(0, 100))
 
     if (!transcript) {
-      console.error('No transcript provided in request')
       throw new Error('No transcript provided')
     }
 
-    // Get the API key from environment variables
     const apiKey = Deno.env.get('PERPLEXITY_API_KEY')
     if (!apiKey) {
-      console.error('PERPLEXITY_API_KEY not found in environment variables')
       throw new Error('API configuration missing')
     }
 
-    console.log('Making request to Perplexity API with transcript:', transcript.substring(0, 100))
-    
-    try {
-      const requestBody = {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'mixtral-8x7b-instruct',
         messages: [
           {
             role: 'system',
-            content: 'You are an AI assistant that helps analyze teacher conversations. Extract key information about the teacher and suggest content for their profile.'
+            content: 'You are an AI assistant that helps analyze teacher conversations and create engaging social media content. Extract key insights and create both short posts (1-2 sentences) and longer article-style posts.'
           },
           {
             role: 'user',
-            content: transcript
+            content: `Analyze this teacher conversation and create 2-3 short posts (1-2 sentences each) and 1 longer article-style post (3-4 paragraphs) that would be engaging for other teachers: ${transcript}`
           }
         ],
-        max_tokens: 150
-      }
-
-      console.log('Request body:', JSON.stringify(requestBody))
-
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+        max_tokens: 1000
       })
+    })
 
-      console.log('Perplexity API response status:', response.status)
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Perplexity API error response:', errorText)
-        throw new Error(`API request failed with status ${response.status}: ${errorText}`)
-      }
-
-      const result = await response.json()
-      console.log('Successfully processed transcript, API response:', result)
-
-      if (!result.choices?.[0]?.message?.content) {
-        throw new Error('Invalid response format from Perplexity API')
-      }
-
-      return new Response(
-        JSON.stringify({
-          suggestion: {
-            content: result.choices[0].message.content
-          }
-        }),
-        { 
-          headers: { 
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          } 
-        }
-      )
-
-    } catch (apiError) {
-      console.error('Error calling Perplexity API:', apiError)
-      throw new Error(`Failed to process with Perplexity API: ${apiError.message}`)
+    if (!response.ok) {
+      console.error('Perplexity API error:', await response.text())
+      throw new Error(`Perplexity API error: ${response.statusText}`)
     }
 
+    const result = await response.json()
+    console.log('API Response:', result)
+
+    return new Response(
+      JSON.stringify({
+        postSuggestions: [
+          {
+            content: result.choices[0].message.content,
+            post_type: 'article'
+          }
+        ]
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   } catch (error) {
     console.error('Error processing transcript:', error)
     return new Response(
-      JSON.stringify({
-        error: error.message || 'Failed to process transcript'
-      }),
+      JSON.stringify({ error: error.message }),
       { 
         status: 500,
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
