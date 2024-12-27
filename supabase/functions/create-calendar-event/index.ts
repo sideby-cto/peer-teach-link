@@ -64,14 +64,29 @@ serve(async (req) => {
       )
     }
 
+    console.log('Raw credentials string:', credentialsString.substring(0, 50) + '...')
+
     let credentials;
     try {
       credentials = JSON.parse(credentialsString)
-      console.log('Successfully parsed credentials')
+      
+      // Validate required fields in credentials
+      const requiredFields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+      const missingFields = requiredFields.filter(field => !credentials[field])
+      
+      if (missingFields.length > 0) {
+        console.error('Missing required fields in credentials:', missingFields)
+        return new Response(
+          JSON.stringify({ error: `Invalid calendar configuration: missing ${missingFields.join(', ')}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      console.log('Successfully parsed credentials with fields:', Object.keys(credentials))
     } catch (error) {
       console.error('Failed to parse credentials:', error)
       return new Response(
-        JSON.stringify({ error: 'Invalid calendar configuration' }),
+        JSON.stringify({ error: 'Invalid calendar configuration: failed to parse JSON' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -145,7 +160,7 @@ serve(async (req) => {
     } catch (error) {
       console.error('Calendar API error:', error)
       return new Response(
-        JSON.stringify({ error: 'Failed to create calendar event' }),
+        JSON.stringify({ error: 'Failed to create calendar event: ' + error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
