@@ -21,6 +21,7 @@ export const useSessionManager = () => {
   const clearSessionData = () => {
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
     });
   };
 
@@ -29,8 +30,8 @@ export const useSessionManager = () => {
       console.error('Session error:', sessionError);
       clearSessionData();
       toast({
-        title: "Authentication Error",
-        description: "There was a problem with your session. Please sign in again.",
+        title: "Session Error",
+        description: "Your session has expired. Please sign in again.",
         variant: "destructive",
       });
       navigate("/");
@@ -38,8 +39,8 @@ export const useSessionManager = () => {
   }, [sessionError, toast, navigate]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!currentSession) {
         clearSessionData();
         toast({
           title: "Session ended",
