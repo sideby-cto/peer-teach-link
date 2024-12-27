@@ -1,11 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { google } from 'npm:googleapis@126';
 
-const GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3"
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
   try {
     const { teacherId, teacherName, selectedTime } = await req.json()
+    console.log('Received request:', { teacherId, teacherName, selectedTime })
     
     // Create Supabase client
     const supabaseClient = createClient(
@@ -20,9 +30,10 @@ serve(async (req) => {
     )
 
     if (userError || !user) {
+      console.error('Auth error:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401 }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -33,16 +44,26 @@ serve(async (req) => {
       .in('id', [user.id, teacherId])
 
     if (teachersError || !teachers || teachers.length !== 2) {
+      console.error('Teachers fetch error:', teachersError)
       return new Response(
         JSON.stringify({ error: 'Teachers not found' }),
-        { status: 404 }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const currentTeacher = teachers.find(t => t.id === user.id)
     const otherTeacher = teachers.find(t => t.id === teacherId)
 
-    // Create calendar event using Google Calendar API
+    // Set up Google Calendar API
+    const credentials = JSON.parse(Deno.env.get('GOOGLE_CALENDAR_CREDENTIALS') || '{}')
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/calendar']
+    })
+
+    const calendar = google.calendar({ version: 'v3', auth })
+
+    // Create calendar event
     const event = {
       summary: `20min Chat: ${currentTeacher?.full_name} & ${otherTeacher?.full_name}`,
       description: `A 20-minute conversation between teachers on sideby.`,
@@ -66,47 +87,44 @@ serve(async (req) => {
       }
     }
 
-    const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('GOOGLE_CALENDAR_ACCESS_TOKEN')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(event)
+    console.log('Creating calendar event:', event)
+
+    const calendarEvent = await calendar.events.insert({
+      calendarId: 'primary',
+      conferenceDataVersion: 1,
+      requestBody: event,
     })
 
-    if (!response.ok) {
-      throw new Error(`Google Calendar API error: ${await response.text()}`)
-    }
+    console.log('Calendar event created:', calendarEvent.data)
 
-    const calendarEvent = await response.json()
-
-    // Update the conversation in Supabase with the scheduled time
+    // Update the conversation in Supabase
     const { error: conversationError } = await supabaseClient
       .from('conversations')
-      .update({ 
+      .insert({
+        teacher1_id: user.id,
+        teacher2_id: teacherId,
         status: 'scheduled',
         scheduled_at: selectedTime
       })
-      .eq('teacher1_id', user.id)
-      .eq('teacher2_id', teacherId)
 
     if (conversationError) {
-      throw new Error(`Failed to update conversation: ${conversationError.message}`)
+      console.error('Conversation creation error:', conversationError)
+      throw new Error(`Failed to create conversation: ${conversationError.message}`)
     }
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        meetingLink: calendarEvent.hangoutLink,
-        eventId: calendarEvent.id
+        meetingLink: calendarEvent.data.hangoutLink,
+        eventId: calendarEvent.data.id
       }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('Function error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500 }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

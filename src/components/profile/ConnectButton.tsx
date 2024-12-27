@@ -5,13 +5,14 @@ import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useState } from "react";
-import { addDays, setHours, setMinutes } from "date-fns";
+import { addDays } from "date-fns";
 
 interface ConnectButtonProps {
   teacherId: string;
@@ -93,24 +94,15 @@ export const ConnectButton = ({ teacherId, teacherName }: ConnectButtonProps) =>
     setIsScheduling(true);
 
     try {
-      const response = await fetch('/functions/v1/create-calendar-event', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-calendar-event', {
+        body: {
           teacherId,
           teacherName,
           selectedTime: selectedDate.toISOString(),
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to schedule meeting');
-      }
-
-      const { meetingLink } = await response.json();
+      if (error) throw error;
 
       toast({
         title: "Meeting scheduled!",
@@ -145,6 +137,9 @@ export const ConnectButton = ({ teacherId, teacherName }: ConnectButtonProps) =>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Schedule a 20-minute chat with {teacherName}</DialogTitle>
+            <DialogDescription>
+              Pick a date and time for your conversation. You'll receive a calendar invite with a Google Meet link.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="py-4">
