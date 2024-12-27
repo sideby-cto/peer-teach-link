@@ -3,6 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -11,33 +12,49 @@ serve(async (req) => {
     const { teacherId, selectedTime } = await req.json()
     console.log('Received request:', { teacherId, selectedTime })
     
-    // Validate user
+    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''  // Using service role key to bypass RLS
     )
 
+    // Validate user
     const authHeader = req.headers.get('Authorization')!
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
 
     if (userError || !user) {
+      console.error('Auth error:', userError)
       throw new Error('Unauthorized')
     }
 
-    // Get teacher profiles
-    const { data: teachers, error: teachersError } = await supabaseClient
+    console.log('Authenticated user:', user.id)
+
+    // Get teacher profiles - using service role client to bypass RLS
+    const { data: currentTeacher, error: currentTeacherError } = await supabaseClient
       .from('teachers')
       .select('*')
-      .in('id', [user.id, teacherId])
+      .eq('id', user.id)
+      .single()
 
-    if (teachersError || !teachers || teachers.length !== 2) {
-      throw new Error('Teachers not found')
+    if (currentTeacherError || !currentTeacher) {
+      console.error('Current teacher fetch error:', currentTeacherError)
+      throw new Error('Current teacher not found')
     }
 
-    const currentTeacher = teachers.find(t => t.id === user.id)
-    const otherTeacher = teachers.find(t => t.id === teacherId)
+    const { data: otherTeacher, error: otherTeacherError } = await supabaseClient
+      .from('teachers')
+      .select('*')
+      .eq('id', teacherId)
+      .single()
+
+    if (otherTeacherError || !otherTeacher) {
+      console.error('Other teacher fetch error:', otherTeacherError)
+      throw new Error('Other teacher not found')
+    }
+
+    console.log('Found teachers:', { currentTeacher: currentTeacher.id, otherTeacher: otherTeacher.id })
 
     // Create conversation record
     const { error: conversationError } = await supabaseClient
@@ -50,6 +67,7 @@ serve(async (req) => {
       })
 
     if (conversationError) {
+      console.error('Conversation creation error:', conversationError)
       throw new Error(`Failed to create conversation: ${conversationError.message}`)
     }
 
