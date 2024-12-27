@@ -40,7 +40,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mixtral-8x7b-instruct',
+        model: 'llama-3.1-sonar-small-128k-online',  // Changed to a valid Perplexity model
         messages: [
           {
             role: 'system',
