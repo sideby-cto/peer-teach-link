@@ -22,7 +22,8 @@ serve(async (req) => {
 
     // Improved prompt for better results
     const systemPrompt = `You are an AI assistant that helps analyze teacher conversations and create engaging social media content. 
-    Extract key insights and create both short posts (1-2 sentences) and longer article-style posts. Focus on practical teaching tips and insights.`
+    Extract key insights and create both short posts (1-2 sentences) and longer article-style posts. Focus on practical teaching tips and insights.
+    Format the content using markdown for better readability.`
 
     const userPrompt = `Analyze this teacher conversation and create:
     1. Two short posts (1-2 sentences each) highlighting key teaching insights
@@ -51,8 +52,11 @@ serve(async (req) => {
           }
         ],
         max_tokens: 1000,
-        temperature: 0.7,
-        stream: false
+        temperature: 0.5, // Reduced for more focused responses
+        stream: false,
+        top_p: 0.9, // Added for better response quality
+        frequency_penalty: 1, // Added to reduce repetition
+        presence_penalty: 0.5 // Added to encourage more diverse content
       })
     })
 
