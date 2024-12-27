@@ -9,6 +9,7 @@ import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useSessionManager } from "@/hooks/useSessionManager";
 
 interface UserMenuProps {
   user: User;
@@ -17,12 +18,11 @@ interface UserMenuProps {
 export const UserMenu = ({ user }: UserMenuProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { clearSessionData } = useSessionManager();
   
   const handleSignOut = async () => {
     try {
-      // First, clear any stored session data
-      localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('sb-avphywyhlxajyhqudkts-auth-token');
+      clearSessionData();
       
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -35,7 +35,6 @@ export const UserMenu = ({ user }: UserMenuProps) => {
         description: "You have been signed out of your account.",
       });
       
-      // Force a complete page reload to clear any cached state
       window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
