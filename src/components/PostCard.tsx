@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CheckCircle, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from 'react-markdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,9 +120,9 @@ export const PostCard = ({ author, content, timestamp, likes, comments, isApprov
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
-          {content}
-        </p>
+        <div className="prose prose-sm max-w-none text-gray-800">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
       </CardContent>
     </Card>
   );
